@@ -22,9 +22,19 @@ interface Props {
   onApplyPreset: (preset: "traditional" | "shared_bot" | "relay_bots") => void;
   result: PipelineResult | null;
   botEscalationRate: number;
+  humanMonthlyCost: number;
+  botMonthlyCost: number;
 }
 
-export function PipelineView({ stages, onChangeStages, onApplyPreset, result, botEscalationRate }: Props) {
+export function PipelineView({
+  stages,
+  onChangeStages,
+  onApplyPreset,
+  result,
+  botEscalationRate,
+  humanMonthlyCost,
+  botMonthlyCost,
+}: Props) {
   const updateStage = (idx: number, patch: Partial<EditablePipelineStage>) => {
     const next = stages.map((st, i) => (i === idx ? { ...st, ...patch } : st));
     onChangeStages(next);
@@ -350,7 +360,13 @@ export function PipelineView({ stages, onChangeStages, onApplyPreset, result, bo
         </div>
       </div>
 
-      <PipelineAnalyst stages={stages} result={result} botEscalationRate={botEscalationRate} />
+      <PipelineAnalyst
+        stages={stages}
+        result={result}
+        botEscalationRate={botEscalationRate}
+        humanMonthlyCost={humanMonthlyCost}
+        botMonthlyCost={botMonthlyCost}
+      />
     </div>
   );
 }

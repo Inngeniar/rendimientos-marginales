@@ -557,6 +557,8 @@ export function App() {
               onApplyPreset={handleApplyPipelinePreset}
               result={pipelineResult}
               botEscalationRate={botProfile.exception_escalation_rate}
+              humanMonthlyCost={humanProfile.monthly_cost}
+              botMonthlyCost={botProfile.monthly_cost}
             />
 
             <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">

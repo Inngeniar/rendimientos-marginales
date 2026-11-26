@@ -1,10 +1,13 @@
+import { useState } from "react";
 import {
   AlertCircle,
   ArrowRightLeft,
   Bot,
   CheckCircle2,
   Compass,
+  DollarSign,
   Lightbulb,
+  Pin,
   ShieldAlert,
   Sparkles,
 } from "lucide-react";
@@ -15,9 +18,26 @@ interface Props {
   stages: EditablePipelineStage[];
   result: PipelineResult | null;
   botEscalationRate: number;
+  humanMonthlyCost: number;
+  botMonthlyCost: number;
 }
 
-export function PipelineAnalyst({ stages, result, botEscalationRate }: Props) {
+interface SavedScenarioSnapshot {
+  humans: number;
+  bots: number;
+  monthlyCost: number;
+  costPerInvoice: number;
+  maxUtilPct: number;
+}
+
+export function PipelineAnalyst({
+  stages,
+  result,
+  botEscalationRate,
+  humanMonthlyCost,
+  botMonthlyCost,
+}: Props) {
+  const [savedRef, setSavedRef] = useState<SavedScenarioSnapshot | null>(null);
   if (!result || result.stages.length === 0) return null;
 
   const bottleneckIdx = result.stages.findIndex((s) => s.is_bottleneck);
@@ -41,6 +61,12 @@ export function PipelineAnalyst({ stages, result, botEscalationRate }: Props) {
     0
   );
   const totalBots = pooledBotMax + nonPooledBots;
+  const totalHumanCost = totalHumans * humanMonthlyCost;
+  const totalBotCost = totalBots * botMonthlyCost;
+  const totalMonthlyCost = totalHumanCost + totalBotCost;
+  const chainDemand = Math.max(...result.stages.map((s) => s.effective_demand_with_rework), 1);
+  const costPerInvoice = totalMonthlyCost / chainDemand;
+  const refDiff = savedRef ? savedRef.monthlyCost - totalMonthlyCost : 0;
 
   const safeRecommendedCount = bottleneck.safe_recommended_count ?? bottleneck.recommended_count;
   const currentBnUnits =
@@ -204,6 +230,93 @@ export function PipelineAnalyst({ stages, result, botEscalationRate }: Props) {
           {isHealthyFlow ? <CheckCircle2 className="h-3.5 w-3.5" /> : <ShieldAlert className="h-3.5 w-3.5" />}
           {isHealthyFlow ? "Flujo balanceado (≤ 85%)" : "Requiere ajuste de balanceo"}
         </span>
+      </div>
+
+      {/* Bloque Financiero y Comparador de Costo-Efectividad */}
+      <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
+            <DollarSign className="h-4 w-4 text-emerald-600" />
+            Evaluación Financiera y Costo-Efectividad del Flujo
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() =>
+                setSavedRef({
+                  humans: totalHumans,
+                  bots: totalBots,
+                  monthlyCost: totalMonthlyCost,
+                  costPerInvoice,
+                  maxUtilPct: Number(bnPct),
+                })
+              }
+              className="inline-flex items-center gap-1 rounded-lg border border-indigo-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-indigo-700 transition hover:bg-indigo-50"
+            >
+              <Pin className="h-3 w-3" />
+              {savedRef ? "Actualizar Escenario A" : "Fijar como Escenario A"}
+            </button>
+            {savedRef && (
+              <button
+                type="button"
+                onClick={() => setSavedRef(null)}
+                className="text-[11px] font-medium text-slate-500 hover:text-slate-800"
+              >
+                Limpiar
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="rounded-lg bg-white p-3 shadow-sm">
+            <div className="text-[11px] text-slate-500">Costo Total Mensual</div>
+            <div className="mt-0.5 text-base font-bold tabular-nums text-slate-900">
+              ${totalMonthlyCost.toLocaleString()}
+            </div>
+          </div>
+          <div className="rounded-lg bg-white p-3 shadow-sm">
+            <div className="text-[11px] text-slate-500">Costo / Factura</div>
+            <div className="mt-0.5 text-base font-bold tabular-nums text-indigo-700">
+              ${Math.round(costPerInvoice).toLocaleString()}
+            </div>
+          </div>
+          <div className="rounded-lg bg-white p-3 shadow-sm">
+            <div className="text-[11px] text-slate-500">Nómina Humana ({totalHumans})</div>
+            <div className="mt-0.5 text-sm font-semibold tabular-nums text-slate-800">
+              ${totalHumanCost.toLocaleString()}
+            </div>
+          </div>
+          <div className="rounded-lg bg-white p-3 shadow-sm">
+            <div className="text-[11px] text-slate-500">Licencias RPA ({totalBots})</div>
+            <div className="mt-0.5 text-sm font-semibold tabular-nums text-violet-700">
+              ${totalBotCost.toLocaleString()}
+            </div>
+          </div>
+        </div>
+
+        {savedRef && (
+          <div
+            className={`mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2 text-xs ${
+              refDiff > 0
+                ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                : refDiff < 0
+                  ? "border-amber-200 bg-amber-50 text-amber-900"
+                  : "border-slate-200 bg-white text-slate-700"
+            }`}
+          >
+            <span>
+              <strong>Comparativa vs. Escenario A ({savedRef.humans}H + {savedRef.bots}B · ${savedRef.monthlyCost.toLocaleString()}/mes):</strong>{" "}
+              {refDiff > 0
+                ? `Este escenario es más costo-efectivo: ahorras $${refDiff.toLocaleString()}/mes ($${Math.round(
+                    savedRef.costPerInvoice - costPerInvoice
+                  ).toLocaleString()}/factura menos).`
+                : refDiff < 0
+                  ? `Este escenario cuesta $${Math.abs(refDiff).toLocaleString()}/mes más que el Escenario A.`
+                  : "Mismo costo mensual que el Escenario A."}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Bloque 1: Diagnóstico */}
