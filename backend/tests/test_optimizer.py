@@ -106,6 +106,7 @@ def test_pipeline_mixed_human_and_bot_stage():
                     assigned_count=2,
                     bot_resource=bot,
                     assigned_bots=2,
+                    bot_avg_time_minutes=4.0,
                 )
             ]
         )

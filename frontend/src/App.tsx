@@ -83,10 +83,10 @@ const DEFAULT_BOT: ResourceProfile = {
 };
 
 const DEFAULT_PIPELINE_STAGES: EditablePipelineStage[] = [
-  { name: "1. Liquidación", category: "liquidacion", avg_time_minutes: 8, mode: "human", assigned_count: 6, assigned_bots: 0, pass_through_rate: 1.0, share_bot_pool: false },
-  { name: "2. Armado de Cuentas", category: "armado_cuentas", avg_time_minutes: 8, mode: "human", assigned_count: 6, assigned_bots: 0, pass_through_rate: 1.0, share_bot_pool: false },
-  { name: "3. Auditoría", category: "auditoria", avg_time_minutes: 15, mode: "human", assigned_count: 8, assigned_bots: 0, pass_through_rate: 1.0, share_bot_pool: false },
-  { name: "4. Radicación", category: "radicacion", avg_time_minutes: 3, mode: "human", assigned_count: 6, assigned_bots: 0, pass_through_rate: 1.0, share_bot_pool: false },
+  { name: "1. Liquidación", category: "liquidacion", avg_time_minutes: 8, bot_avg_time_minutes: 4, mode: "human", assigned_count: 6, assigned_bots: 0, pass_through_rate: 1.0, share_bot_pool: false },
+  { name: "2. Armado de Cuentas", category: "armado_cuentas", avg_time_minutes: 8, bot_avg_time_minutes: 4, mode: "human", assigned_count: 6, assigned_bots: 0, pass_through_rate: 1.0, share_bot_pool: false },
+  { name: "3. Auditoría", category: "auditoria", avg_time_minutes: 15, bot_avg_time_minutes: 5, mode: "human", assigned_count: 8, assigned_bots: 0, pass_through_rate: 1.0, share_bot_pool: false },
+  { name: "4. Radicación", category: "radicacion", avg_time_minutes: 3, bot_avg_time_minutes: 3, mode: "human", assigned_count: 6, assigned_bots: 0, pass_through_rate: 1.0, share_bot_pool: false },
 ];
 
 export function App() {
@@ -154,12 +154,13 @@ export function App() {
             ...processCfg,
             name: st.name,
             category: st.category,
-            avg_time_minutes: st.avg_time_minutes,
+            avg_time_minutes: st.mode === "bot" ? st.bot_avg_time_minutes : st.avg_time_minutes,
           },
           resource: st.mode === "bot" ? botProfile : humanProfile,
           assigned_count: st.mode === "bot" ? Math.max(1, st.assigned_bots) : st.assigned_count,
           bot_resource: st.mode === "mix" ? botProfile : null,
           assigned_bots: st.mode === "mix" ? st.assigned_bots : 0,
+          bot_avg_time_minutes: st.mode === "mix" ? st.bot_avg_time_minutes : null,
           pass_through_rate: st.pass_through_rate,
           shared_pool: st.mode !== "human" && st.share_bot_pool ? "bot-rpa-compartido" : null,
         }))
@@ -174,17 +175,17 @@ export function App() {
     let next: EditablePipelineStage[];
     if (preset === "shared_bot") {
       next = [
-        { name: "1. Liquidación", category: "liquidacion", avg_time_minutes: 5, mode: "human", assigned_count: 9, assigned_bots: 0, pass_through_rate: 1.0, share_bot_pool: false },
-        { name: "2. Armado de Cuentas", category: "armado_cuentas", avg_time_minutes: 8, mode: "bot", assigned_count: 0, assigned_bots: 3, pass_through_rate: 1.0, share_bot_pool: true },
-        { name: "3. Auditoría", category: "auditoria", avg_time_minutes: 12, mode: "human", assigned_count: 2, assigned_bots: 0, pass_through_rate: 0.1, share_bot_pool: false },
-        { name: "4. Radicación", category: "radicacion", avg_time_minutes: 3, mode: "bot", assigned_count: 0, assigned_bots: 3, pass_through_rate: 1.0, share_bot_pool: true },
+        { name: "1. Liquidación", category: "liquidacion", avg_time_minutes: 5, bot_avg_time_minutes: 3, mode: "human", assigned_count: 9, assigned_bots: 0, pass_through_rate: 1.0, share_bot_pool: false },
+        { name: "2. Armado de Cuentas", category: "armado_cuentas", avg_time_minutes: 8, bot_avg_time_minutes: 4, mode: "bot", assigned_count: 0, assigned_bots: 3, pass_through_rate: 1.0, share_bot_pool: true },
+        { name: "3. Auditoría", category: "auditoria", avg_time_minutes: 12, bot_avg_time_minutes: 4, mode: "human", assigned_count: 2, assigned_bots: 0, pass_through_rate: 0.1, share_bot_pool: false },
+        { name: "4. Radicación", category: "radicacion", avg_time_minutes: 3.5, bot_avg_time_minutes: 3.5, mode: "bot", assigned_count: 0, assigned_bots: 3, pass_through_rate: 1.0, share_bot_pool: true },
       ];
     } else if (preset === "relay_bots") {
       next = [
-        { name: "1. Liquidación", category: "liquidacion", avg_time_minutes: 5, mode: "human", assigned_count: 9, assigned_bots: 0, pass_through_rate: 1.0, share_bot_pool: false },
-        { name: "2. Armado de Cuentas", category: "armado_cuentas", avg_time_minutes: 8, mode: "mix", assigned_count: 1, assigned_bots: 2, pass_through_rate: 1.0, share_bot_pool: false },
-        { name: "3. Auditoría", category: "auditoria", avg_time_minutes: 12, mode: "human", assigned_count: 2, assigned_bots: 0, pass_through_rate: 0.1, share_bot_pool: false },
-        { name: "4. Radicación", category: "radicacion", avg_time_minutes: 3, mode: "bot", assigned_count: 0, assigned_bots: 2, pass_through_rate: 1.0, share_bot_pool: false },
+        { name: "1. Liquidación", category: "liquidacion", avg_time_minutes: 5, bot_avg_time_minutes: 3, mode: "human", assigned_count: 9, assigned_bots: 0, pass_through_rate: 1.0, share_bot_pool: false },
+        { name: "2. Armado de Cuentas", category: "armado_cuentas", avg_time_minutes: 8, bot_avg_time_minutes: 4, mode: "mix", assigned_count: 2, assigned_bots: 2, pass_through_rate: 1.0, share_bot_pool: false },
+        { name: "3. Auditoría", category: "auditoria", avg_time_minutes: 12, bot_avg_time_minutes: 4, mode: "human", assigned_count: 2, assigned_bots: 0, pass_through_rate: 0.1, share_bot_pool: false },
+        { name: "4. Radicación", category: "radicacion", avg_time_minutes: 3.5, bot_avg_time_minutes: 3.5, mode: "bot", assigned_count: 0, assigned_bots: 2, pass_through_rate: 1.0, share_bot_pool: false },
       ];
     } else {
       next = DEFAULT_PIPELINE_STAGES;
@@ -555,6 +556,7 @@ export function App() {
               }}
               onApplyPreset={handleApplyPipelinePreset}
               result={pipelineResult}
+              botEscalationRate={botProfile.exception_escalation_rate}
             />
 
             <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">

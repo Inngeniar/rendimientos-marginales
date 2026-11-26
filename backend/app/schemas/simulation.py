@@ -88,6 +88,11 @@ class PipelineStageInput(BaseModel):
         description="Perfil de Bot RPA opcional cuando la etapa combina Humanos y Bots",
     )
     assigned_bots: int = Field(ge=0, default=0)
+    bot_avg_time_minutes: float | None = Field(
+        default=None,
+        gt=0,
+        description="Tiempo estándar específico del Bot (min) en modo Mixto; si se omite usa process.avg_time_minutes",
+    )
     pass_through_rate: float = Field(
         ge=0.0,
         le=1.0,

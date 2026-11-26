@@ -8,6 +8,7 @@ export interface EditablePipelineStage {
   name: string;
   category: ProcessCategory;
   avg_time_minutes: number;
+  bot_avg_time_minutes: number;
   mode: StageResourceMode;
   assigned_count: number;
   assigned_bots: number;
@@ -20,13 +21,19 @@ interface Props {
   onChangeStages: (stages: EditablePipelineStage[]) => void;
   onApplyPreset: (preset: "traditional" | "shared_bot" | "relay_bots") => void;
   result: PipelineResult | null;
+  botEscalationRate: number;
 }
 
-export function PipelineView({ stages, onChangeStages, onApplyPreset, result }: Props) {
+export function PipelineView({ stages, onChangeStages, onApplyPreset, result, botEscalationRate }: Props) {
   const updateStage = (idx: number, patch: Partial<EditablePipelineStage>) => {
     const next = stages.map((st, i) => (i === idx ? { ...st, ...patch } : st));
     onChangeStages(next);
   };
+
+  const maxStageUtil = result
+    ? Math.max(...result.stages.map((s) => s.pool_utilization_rate ?? s.utilization_rate))
+    : 0;
+  const flowHealthy = maxStageUtil <= 0.85;
 
   return (
     <div className="space-y-4">
@@ -41,9 +48,16 @@ export function PipelineView({ stages, onChangeStages, onApplyPreset, result }: 
             </p>
           </div>
           {result && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-800 ring-1 ring-rose-600/20">
-              <AlertTriangle className="h-3.5 w-3.5" />
-              Cuello: {result.bottleneck_stage} · Máx: {result.max_end_to_end_monthly_throughput.toLocaleString()} fact/mes
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ring-1 ${
+                flowHealthy
+                  ? "bg-emerald-50 text-emerald-800 ring-emerald-600/20"
+                  : "bg-rose-50 text-rose-800 ring-rose-600/20"
+              }`}
+            >
+              {flowHealthy ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
+              {flowHealthy ? "Límite sano:" : "Cuello:"} {result.bottleneck_stage} · Máx:{" "}
+              {result.max_end_to_end_monthly_throughput.toLocaleString()} fact/mes
             </span>
           )}
         </div>
@@ -87,17 +101,23 @@ export function PipelineView({ stages, onChangeStages, onApplyPreset, result }: 
               <div
                 key={cfg.name}
                 className={`flex flex-col justify-between rounded-xl border p-4 transition ${
-                  st?.is_bottleneck
+                  st?.is_bottleneck && effectiveUtil > 0.85
                     ? "border-rose-300 bg-rose-50/50 shadow-sm"
-                    : "border-slate-200/80 bg-slate-50/60"
+                    : st?.is_bottleneck
+                      ? "border-emerald-300 bg-emerald-50/30 shadow-sm"
+                      : "border-slate-200/80 bg-slate-50/60"
                 }`}
               >
                 <div>
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-sm font-semibold text-slate-900">{cfg.name}</span>
-                    {st?.is_bottleneck ? (
+                    {st?.is_bottleneck && effectiveUtil > 0.85 ? (
                       <span className="rounded-full bg-rose-600 px-2 py-0.5 text-[10px] font-bold uppercase text-white">
                         Cuello
+                      </span>
+                    ) : st?.is_bottleneck ? (
+                      <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold uppercase text-white">
+                        Límite sano
                       </span>
                     ) : (
                       <CheckCircle2 className="h-4 w-4 text-emerald-500" />
@@ -192,19 +212,54 @@ export function PipelineView({ stages, onChangeStages, onApplyPreset, result }: 
                         </label>
                       )}
 
-                      <label className={`flex flex-col text-[11px] text-slate-600 ${cfg.mode === "mix" ? "col-span-2" : ""}`}>
-                        Tiempo estándar (min)
-                        <input
-                          type="number"
-                          min={0.5}
-                          step={0.5}
-                          value={cfg.avg_time_minutes}
-                          onChange={(e) =>
-                            updateStage(idx, { avg_time_minutes: Math.max(0.5, Number(e.target.value)) })
-                          }
-                          className="mt-0.5 rounded border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-900"
-                        />
-                      </label>
+                      {cfg.mode === "mix" ? (
+                        <>
+                          <label className="flex flex-col text-[11px] text-slate-600">
+                            T. Humano (min)
+                            <input
+                              type="number"
+                              min={0.5}
+                              step={0.5}
+                              value={cfg.avg_time_minutes}
+                              onChange={(e) =>
+                                updateStage(idx, { avg_time_minutes: Math.max(0.5, Number(e.target.value)) })
+                              }
+                              className="mt-0.5 rounded border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-900"
+                            />
+                          </label>
+                          <label className="flex flex-col text-[11px] text-violet-700">
+                            T. Bot (min)
+                            <input
+                              type="number"
+                              min={0.5}
+                              step={0.5}
+                              value={cfg.bot_avg_time_minutes}
+                              onChange={(e) =>
+                                updateStage(idx, { bot_avg_time_minutes: Math.max(0.5, Number(e.target.value)) })
+                              }
+                              className="mt-0.5 rounded border border-violet-200 px-2 py-1 text-xs font-semibold text-violet-900"
+                            />
+                          </label>
+                        </>
+                      ) : (
+                        <label className="flex flex-col text-[11px] text-slate-600">
+                          Tiempo (min)
+                          <input
+                            type="number"
+                            min={0.5}
+                            step={0.5}
+                            value={cfg.mode === "bot" ? cfg.bot_avg_time_minutes : cfg.avg_time_minutes}
+                            onChange={(e) => {
+                              const val = Math.max(0.5, Number(e.target.value));
+                              updateStage(
+                                idx,
+                                cfg.mode === "bot" ? { bot_avg_time_minutes: val } : { avg_time_minutes: val }
+                              );
+                            }}
+                            className="mt-0.5 rounded border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-900"
+                          />
+                        </label>
+                      )}
                     </div>
 
                     <label className="flex flex-col text-[11px] text-slate-600">
@@ -295,7 +350,7 @@ export function PipelineView({ stages, onChangeStages, onApplyPreset, result }: 
         </div>
       </div>
 
-      <PipelineAnalyst stages={stages} result={result} />
+      <PipelineAnalyst stages={stages} result={result} botEscalationRate={botEscalationRate} />
     </div>
   );
 }

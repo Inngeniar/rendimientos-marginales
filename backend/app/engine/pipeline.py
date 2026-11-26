@@ -17,8 +17,13 @@ def analyze_pipeline(req: PipelineRequest) -> PipelineResult:
 
         is_mixed = stage.bot_resource is not None and stage.assigned_bots > 0 and stage.assigned_count > 0
         if is_mixed and stage.bot_resource is not None:
+            bot_process = (
+                stage.process.model_copy(update={"avg_time_minutes": stage.bot_avg_time_minutes})
+                if stage.bot_avg_time_minutes is not None
+                else stage.process
+            )
             human_unit = _single_resource_base_net(stage.process, stage.resource)
-            bot_unit = _single_resource_base_net(stage.process, stage.bot_resource)
+            bot_unit = _single_resource_base_net(bot_process, stage.bot_resource)
             human_cap = human_unit * stage.assigned_count
             bot_cap = bot_unit * stage.assigned_bots
             escalation = stage.bot_resource.exception_escalation_rate
