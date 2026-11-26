@@ -1,5 +1,6 @@
 import { AlertTriangle, Bot, CheckCircle2, Layers, User } from "lucide-react";
 import type { PipelineResult, ProcessCategory, ResourceType } from "../types/models";
+import { PipelineAnalyst } from "./PipelineAnalyst";
 
 export interface EditablePipelineStage {
   name: string;
@@ -231,6 +232,8 @@ export function PipelineView({ stages, onChangeStages, onApplyPreset, result }: 
           })}
         </div>
       </div>
+
+      <PipelineAnalyst stages={stages} result={result} />
     </div>
   );
 }
