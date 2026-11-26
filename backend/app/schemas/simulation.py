@@ -83,6 +83,16 @@ class PipelineStageInput(BaseModel):
     process: ProcessConfig
     resource: ResourceProfile
     assigned_count: int = Field(ge=1, default=1)
+    pass_through_rate: float = Field(
+        ge=0.0,
+        le=1.0,
+        default=1.0,
+        description="Fracción de la demanda que ingresa a esta etapa (ej. 0.10 para auditoría aleatoria del 10%)",
+    )
+    shared_pool: str | None = Field(
+        default=None,
+        description="Nombre del pool compartido si varias etapas usan el mismo equipo/licencia de bots",
+    )
 
 
 class PipelineRequest(BaseModel):
@@ -98,6 +108,9 @@ class PipelineStageResult(BaseModel):
     utilization_rate: float
     is_bottleneck: bool
     recommended_count: int
+    pass_through_rate: float = 1.0
+    shared_pool: str | None = None
+    pool_utilization_rate: float | None = None
 
 
 class PipelineResult(BaseModel):

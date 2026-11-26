@@ -26,7 +26,7 @@ import { BenchmarkBadge } from "./components/BenchmarkBadge";
 import { MarginalAnalyst } from "./components/MarginalAnalyst";
 import { MarginalChart } from "./components/MarginalChart";
 import { OitInefficiencyEstimator } from "./components/OitInefficiencyEstimator";
-import { PipelineView } from "./components/PipelineView";
+import { PipelineView, type EditablePipelineStage } from "./components/PipelineView";
 import { ProcessForm } from "./components/ProcessForm";
 import { ResourceMixPanel } from "./components/ResourceMixPanel";
 import { TheoryAndSources } from "./components/TheoryAndSources";
@@ -82,12 +82,20 @@ const DEFAULT_BOT: ResourceProfile = {
   current_headcount: 0,
 };
 
+const DEFAULT_PIPELINE_STAGES: EditablePipelineStage[] = [
+  { name: "1. Liquidación", category: "liquidacion", avg_time_minutes: 8, resource_type: "human", assigned_count: 6, pass_through_rate: 1.0, share_bot_pool: false },
+  { name: "2. Armado de Cuentas", category: "armado_cuentas", avg_time_minutes: 8, resource_type: "human", assigned_count: 6, pass_through_rate: 1.0, share_bot_pool: false },
+  { name: "3. Auditoría", category: "auditoria", avg_time_minutes: 15, resource_type: "human", assigned_count: 8, pass_through_rate: 1.0, share_bot_pool: false },
+  { name: "4. Radicación", category: "radicacion", avg_time_minutes: 3, resource_type: "human", assigned_count: 6, pass_through_rate: 1.0, share_bot_pool: false },
+];
+
 export function App() {
   const [tab, setTab] = useState<"simulator" | "optimizer" | "pipeline" | "theory">("simulator");
   const [processCfg, setProcessCfg] = useState<ProcessConfig>(DEFAULT_PROCESS);
   const [humanProfile, setHumanProfile] = useState<ResourceProfile>(DEFAULT_HUMAN);
   const [botProfile, setBotProfile] = useState<ResourceProfile>(DEFAULT_BOT);
   const [congestionAlpha, setCongestionAlpha] = useState<number>(0.03);
+  const [pipelineStages, setPipelineStages] = useState<EditablePipelineStage[]>(DEFAULT_PIPELINE_STAGES);
 
   const [baseline, setBaseline] = useState<BaselineResult | null>(null);
   const [marginal, setMarginal] = useState<MarginalResult | null>(null);
@@ -136,35 +144,51 @@ export function App() {
     }
   };
 
-  const handleRunPipeline = async () => {
+  const handleRunPipeline = async (stagesOverride?: EditablePipelineStage[]) => {
+    const activeStages = stagesOverride ?? pipelineStages;
     try {
       setError(null);
-      const res = await simulatePipeline([
-        {
-          process: { ...processCfg, name: "1. Liquidación", category: "liquidacion", avg_time_minutes: 8 },
-          resource: humanProfile,
-          assigned_count: 6,
-        },
-        {
-          process: { ...processCfg, name: "2. Armado de Cuentas", category: "armado_cuentas", avg_time_minutes: 8 },
-          resource: humanProfile,
-          assigned_count: 6,
-        },
-        {
-          process: { ...processCfg, name: "3. Auditoría", category: "auditoria", avg_time_minutes: 15 },
-          resource: humanProfile,
-          assigned_count: 8,
-        },
-        {
-          process: { ...processCfg, name: "4. Radicación", category: "radicacion", avg_time_minutes: 3 },
-          resource: humanProfile,
-          assigned_count: 6,
-        },
-      ]);
+      const res = await simulatePipeline(
+        activeStages.map((st) => ({
+          process: {
+            ...processCfg,
+            name: st.name,
+            category: st.category,
+            avg_time_minutes: st.avg_time_minutes,
+          },
+          resource: st.resource_type === "bot" ? botProfile : humanProfile,
+          assigned_count: st.assigned_count,
+          pass_through_rate: st.pass_through_rate,
+          shared_pool: st.resource_type === "bot" && st.share_bot_pool ? "bot-rpa-compartido" : null,
+        }))
+      );
       setPipelineResult(res);
     } catch {
       setError("Error analizando el flujo encadenado.");
     }
+  };
+
+  const handleApplyPipelinePreset = (preset: "traditional" | "shared_bot" | "relay_bots") => {
+    let next: EditablePipelineStage[];
+    if (preset === "shared_bot") {
+      next = [
+        { name: "1. Liquidación", category: "liquidacion", avg_time_minutes: 5, resource_type: "human", assigned_count: 6, pass_through_rate: 1.0, share_bot_pool: false },
+        { name: "2. Armado de Cuentas", category: "armado_cuentas", avg_time_minutes: 8, resource_type: "bot", assigned_count: 8, pass_through_rate: 1.0, share_bot_pool: true },
+        { name: "3. Auditoría", category: "auditoria", avg_time_minutes: 12, resource_type: "human", assigned_count: 2, pass_through_rate: 0.1, share_bot_pool: false },
+        { name: "4. Radicación", category: "radicacion", avg_time_minutes: 3, resource_type: "bot", assigned_count: 8, pass_through_rate: 1.0, share_bot_pool: true },
+      ];
+    } else if (preset === "relay_bots") {
+      next = [
+        { name: "1. Liquidación", category: "liquidacion", avg_time_minutes: 5, resource_type: "human", assigned_count: 6, pass_through_rate: 1.0, share_bot_pool: false },
+        { name: "2. Armado de Cuentas", category: "armado_cuentas", avg_time_minutes: 8, resource_type: "bot", assigned_count: 5, pass_through_rate: 1.0, share_bot_pool: false },
+        { name: "3. Auditoría", category: "auditoria", avg_time_minutes: 12, resource_type: "human", assigned_count: 2, pass_through_rate: 0.1, share_bot_pool: false },
+        { name: "4. Radicación", category: "radicacion", avg_time_minutes: 3, resource_type: "bot", assigned_count: 2, pass_through_rate: 1.0, share_bot_pool: false },
+      ];
+    } else {
+      next = DEFAULT_PIPELINE_STAGES;
+    }
+    setPipelineStages(next);
+    handleRunPipeline(next);
   };
 
   const handleUploadExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -521,7 +545,15 @@ export function App() {
 
         {tab === "pipeline" && (
           <div className="space-y-6">
-            <PipelineView result={pipelineResult} />
+            <PipelineView
+              stages={pipelineStages}
+              onChangeStages={(next) => {
+                setPipelineStages(next);
+                handleRunPipeline(next);
+              }}
+              onApplyPreset={handleApplyPipelinePreset}
+              result={pipelineResult}
+            />
 
             <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
               <h3 className="mb-1 text-base font-semibold text-slate-900">

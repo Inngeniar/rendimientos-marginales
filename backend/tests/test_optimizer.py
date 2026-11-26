@@ -57,3 +57,30 @@ def test_pipeline_identifies_bottleneck():
     )
     assert result.bottleneck_stage == "Auditoría"
     assert any(s.is_bottleneck and s.process_name == "Auditoría" for s in result.stages)
+
+
+def test_pipeline_audit_sampling_and_shared_bot_pool():
+    # Bot: 12h * 30d = 360h = 21,600 min/mes; con speed 1.0 e ineff 0 -> 21,600 min/mes.
+    # Armado 6 min + Radicación 3 min = 9 min/factura -> 1 bot compartido hace 2,400 fact/mes exactas.
+    armado = ProcessConfig(name="2. Armado", category="armado_cuentas", expected_monthly_demand=2400, avg_time_minutes=6, rework_return_rate=0.0)
+    auditoria = ProcessConfig(name="3. Auditoría", category="auditoria", expected_monthly_demand=2400, avg_time_minutes=15, rework_return_rate=0.0)
+    radicacion = ProcessConfig(name="4. Radicación", category="radicacion", expected_monthly_demand=2400, avg_time_minutes=3, rework_return_rate=0.0)
+
+    bot = ResourceProfile(resource_type="bot", available_hours_per_day=12, available_days_per_month=30, speed_multiplier=1.0, inefficiency_rate=0.0)
+    human = ResourceProfile(resource_type="human", available_hours_per_day=8, available_days_per_month=22, inefficiency_rate=0.1)
+
+    result = analyze_pipeline(
+        PipelineRequest(
+            stages=[
+                PipelineStageInput(process=armado, resource=bot, assigned_count=1, shared_pool="bot-rpa"),
+                PipelineStageInput(process=auditoria, resource=human, assigned_count=1, pass_through_rate=0.10),
+                PipelineStageInput(process=radicacion, resource=bot, assigned_count=1, shared_pool="bot-rpa"),
+            ]
+        )
+    )
+    aud_res = next(s for s in result.stages if s.process_name == "3. Auditoría")
+    arm_res = next(s for s in result.stages if s.process_name == "2. Armado")
+    assert aud_res.incoming_demand == 240.0
+    assert aud_res.utilization_rate < 0.5
+    assert arm_res.pool_utilization_rate == 1.0
+    assert result.max_end_to_end_monthly_throughput == 2400.0

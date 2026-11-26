@@ -63,6 +63,8 @@ export async function simulatePipeline(
     process: ProcessConfig;
     resource: ResourceProfile;
     assigned_count: number;
+    pass_through_rate?: number;
+    shared_pool?: string | null;
   }>
 ): Promise<PipelineResult> {
   const { data } = await api.post<PipelineResult>("/simulate/pipeline", {
