@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   Activity,
+  BookOpen,
   Bot,
   Clock,
   Download,
@@ -22,11 +23,13 @@ import {
   simulatePipeline,
 } from "./api/client";
 import { BenchmarkBadge } from "./components/BenchmarkBadge";
+import { MarginalAnalyst } from "./components/MarginalAnalyst";
 import { MarginalChart } from "./components/MarginalChart";
 import { OitInefficiencyEstimator } from "./components/OitInefficiencyEstimator";
 import { PipelineView } from "./components/PipelineView";
 import { ProcessForm } from "./components/ProcessForm";
 import { ResourceMixPanel } from "./components/ResourceMixPanel";
+import { TheoryAndSources } from "./components/TheoryAndSources";
 import type {
   BaselineResult,
   MarginalResult,
@@ -80,7 +83,7 @@ const DEFAULT_BOT: ResourceProfile = {
 };
 
 export function App() {
-  const [tab, setTab] = useState<"simulator" | "optimizer" | "pipeline">("simulator");
+  const [tab, setTab] = useState<"simulator" | "optimizer" | "pipeline" | "theory">("simulator");
   const [processCfg, setProcessCfg] = useState<ProcessConfig>(DEFAULT_PROCESS);
   const [humanProfile, setHumanProfile] = useState<ResourceProfile>(DEFAULT_HUMAN);
   const [botProfile, setBotProfile] = useState<ResourceProfile>(DEFAULT_BOT);
@@ -266,6 +269,17 @@ export function App() {
             >
               <Layers className="h-4 w-4" /> Flujo Integral y Estándares
             </button>
+            <button
+              type="button"
+              onClick={() => setTab("theory")}
+              className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-semibold transition ${
+                tab === "theory"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-200 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              <BookOpen className="h-4 w-4" /> Marco Teórico y Fuentes
+            </button>
           </nav>
         </div>
       </header>
@@ -382,7 +396,18 @@ export function App() {
                 </div>
               )}
 
-              {marginal && <MarginalChart curve={marginal.curve} optimalStaff={marginal.optimal_staff_for_demand} />}
+              {marginal && (
+                <>
+                  <MarginalChart curve={marginal.curve} optimalStaff={marginal.optimal_staff_for_demand} />
+                  <MarginalAnalyst
+                    marginal={marginal}
+                    baseline={baseline}
+                    processCfg={processCfg}
+                    humanProfile={humanProfile}
+                    congestionAlpha={congestionAlpha}
+                  />
+                </>
+              )}
             </div>
           </div>
         )}
@@ -545,6 +570,8 @@ export function App() {
             </div>
           </div>
         )}
+
+        {tab === "theory" && <TheoryAndSources />}
       </main>
     </div>
   );
