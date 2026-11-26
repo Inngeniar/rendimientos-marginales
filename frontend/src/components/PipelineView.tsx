@@ -3,6 +3,7 @@ import type { PipelineResult, ProcessCategory } from "../types/models";
 import { PipelineAnalyst } from "./PipelineAnalyst";
 
 export type StageResourceMode = "human" | "bot" | "mix";
+export type HumanRoleType = "auxiliar" | "tecnico";
 
 export interface EditablePipelineStage {
   name: string;
@@ -10,6 +11,7 @@ export interface EditablePipelineStage {
   avg_time_minutes: number;
   bot_avg_time_minutes: number;
   mode: StageResourceMode;
+  human_role?: HumanRoleType;
   assigned_count: number;
   assigned_bots: number;
   pass_through_rate: number;
@@ -22,8 +24,10 @@ interface Props {
   onApplyPreset: (preset: "traditional" | "shared_bot" | "relay_bots") => void;
   result: PipelineResult | null;
   botEscalationRate: number;
-  humanMonthlyCost: number;
+  auxiliarMonthlyCost: number;
+  tecnicoMonthlyCost: number;
   botMonthlyCost: number;
+  onChangeCosts: (costs: { auxiliar: number; tecnico: number; bot: number }) => void;
 }
 
 export function PipelineView({
@@ -32,8 +36,10 @@ export function PipelineView({
   onApplyPreset,
   result,
   botEscalationRate,
-  humanMonthlyCost,
+  auxiliarMonthlyCost,
+  tecnicoMonthlyCost,
   botMonthlyCost,
+  onChangeCosts,
 }: Props) {
   const updateStage = (idx: number, patch: Partial<EditablePipelineStage>) => {
     const next = stages.map((st, i) => (i === idx ? { ...st, ...patch } : st));
@@ -188,6 +194,31 @@ export function PipelineView({
                         <Users className="h-3 w-3" /> Mixto
                       </button>
                     </div>
+
+                    {(cfg.mode === "human" || cfg.mode === "mix") && (
+                      <div className="flex items-center justify-between gap-1 rounded-md bg-slate-50 px-2 py-1">
+                        <span className="text-[10px] font-medium text-slate-500">Rol humano:</span>
+                        <div className="flex gap-1">
+                          {(["auxiliar", "tecnico"] as const).map((role) => {
+                            const active = (cfg.human_role ?? "auxiliar") === role;
+                            return (
+                              <button
+                                key={role}
+                                type="button"
+                                onClick={() => updateStage(idx, { human_role: role })}
+                                className={`rounded px-1.5 py-0.5 text-[10px] font-semibold transition ${
+                                  active
+                                    ? "bg-indigo-600 text-white"
+                                    : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100"
+                                }`}
+                              >
+                                {role === "auxiliar" ? "Auxiliar" : "Técnico"}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
 
                     <div className="grid grid-cols-2 gap-2">
                       {(cfg.mode === "human" || cfg.mode === "mix") && (
@@ -364,8 +395,10 @@ export function PipelineView({
         stages={stages}
         result={result}
         botEscalationRate={botEscalationRate}
-        humanMonthlyCost={humanMonthlyCost}
+        auxiliarMonthlyCost={auxiliarMonthlyCost}
+        tecnicoMonthlyCost={tecnicoMonthlyCost}
         botMonthlyCost={botMonthlyCost}
+        onChangeCosts={onChangeCosts}
       />
     </div>
   );

@@ -29,6 +29,7 @@ import { OitInefficiencyEstimator } from "./components/OitInefficiencyEstimator"
 import { PipelineView, type EditablePipelineStage } from "./components/PipelineView";
 import { ProcessForm } from "./components/ProcessForm";
 import { ResourceMixPanel } from "./components/ResourceMixPanel";
+import { ScenarioLibrary, loadAutosave, saveAutosave } from "./components/ScenarioLibrary";
 import { TheoryAndSources } from "./components/TheoryAndSources";
 import type {
   BaselineResult,
@@ -83,19 +84,27 @@ const DEFAULT_BOT: ResourceProfile = {
 };
 
 const DEFAULT_PIPELINE_STAGES: EditablePipelineStage[] = [
-  { name: "1. Liquidación", category: "liquidacion", avg_time_minutes: 8, bot_avg_time_minutes: 4, mode: "human", assigned_count: 6, assigned_bots: 0, pass_through_rate: 1.0, share_bot_pool: false },
-  { name: "2. Armado de Cuentas", category: "armado_cuentas", avg_time_minutes: 8, bot_avg_time_minutes: 4, mode: "human", assigned_count: 6, assigned_bots: 0, pass_through_rate: 1.0, share_bot_pool: false },
-  { name: "3. Auditoría", category: "auditoria", avg_time_minutes: 15, bot_avg_time_minutes: 5, mode: "human", assigned_count: 8, assigned_bots: 0, pass_through_rate: 1.0, share_bot_pool: false },
-  { name: "4. Radicación", category: "radicacion", avg_time_minutes: 3, bot_avg_time_minutes: 3, mode: "human", assigned_count: 6, assigned_bots: 0, pass_through_rate: 1.0, share_bot_pool: false },
+  { name: "1. Liquidación", category: "liquidacion", avg_time_minutes: 8, bot_avg_time_minutes: 4, mode: "human", human_role: "auxiliar", assigned_count: 6, assigned_bots: 0, pass_through_rate: 1.0, share_bot_pool: false },
+  { name: "2. Armado de Cuentas", category: "armado_cuentas", avg_time_minutes: 8, bot_avg_time_minutes: 4, mode: "human", human_role: "auxiliar", assigned_count: 6, assigned_bots: 0, pass_through_rate: 1.0, share_bot_pool: false },
+  { name: "3. Auditoría", category: "auditoria", avg_time_minutes: 15, bot_avg_time_minutes: 5, mode: "human", human_role: "tecnico", assigned_count: 8, assigned_bots: 0, pass_through_rate: 1.0, share_bot_pool: false },
+  { name: "4. Radicación", category: "radicacion", avg_time_minutes: 3, bot_avg_time_minutes: 3, mode: "human", human_role: "tecnico", assigned_count: 6, assigned_bots: 0, pass_through_rate: 1.0, share_bot_pool: false },
 ];
 
 export function App() {
+  const [initial] = useState(() => loadAutosave());
   const [tab, setTab] = useState<"simulator" | "optimizer" | "pipeline" | "theory">("simulator");
-  const [processCfg, setProcessCfg] = useState<ProcessConfig>(DEFAULT_PROCESS);
-  const [humanProfile, setHumanProfile] = useState<ResourceProfile>(DEFAULT_HUMAN);
-  const [botProfile, setBotProfile] = useState<ResourceProfile>(DEFAULT_BOT);
-  const [congestionAlpha, setCongestionAlpha] = useState<number>(0.03);
-  const [pipelineStages, setPipelineStages] = useState<EditablePipelineStage[]>(DEFAULT_PIPELINE_STAGES);
+  const [processCfg, setProcessCfg] = useState<ProcessConfig>(() => initial?.processCfg ?? DEFAULT_PROCESS);
+  const [humanProfile, setHumanProfile] = useState<ResourceProfile>(() => initial?.humanProfile ?? DEFAULT_HUMAN);
+  const [botProfile, setBotProfile] = useState<ResourceProfile>(() => initial?.botProfile ?? DEFAULT_BOT);
+  const [congestionAlpha, setCongestionAlpha] = useState<number>(() => initial?.congestionAlpha ?? 0.03);
+  const [tecnicoMonthlyCost, setTecnicoMonthlyCost] = useState<number>(() => initial?.tecnicoMonthlyCost ?? 3_800_000);
+  const [pipelineStages, setPipelineStages] = useState<EditablePipelineStage[]>(
+    () => initial?.pipelineStages ?? DEFAULT_PIPELINE_STAGES
+  );
+
+  useEffect(() => {
+    saveAutosave({ processCfg, humanProfile, botProfile, congestionAlpha, pipelineStages, tecnicoMonthlyCost });
+  }, [processCfg, humanProfile, botProfile, congestionAlpha, pipelineStages, tecnicoMonthlyCost]);
 
   const [baseline, setBaseline] = useState<BaselineResult | null>(null);
   const [marginal, setMarginal] = useState<MarginalResult | null>(null);
@@ -175,17 +184,17 @@ export function App() {
     let next: EditablePipelineStage[];
     if (preset === "shared_bot") {
       next = [
-        { name: "1. Liquidación", category: "liquidacion", avg_time_minutes: 5, bot_avg_time_minutes: 3, mode: "human", assigned_count: 9, assigned_bots: 0, pass_through_rate: 1.0, share_bot_pool: false },
-        { name: "2. Armado de Cuentas", category: "armado_cuentas", avg_time_minutes: 8, bot_avg_time_minutes: 4, mode: "bot", assigned_count: 0, assigned_bots: 3, pass_through_rate: 1.0, share_bot_pool: true },
-        { name: "3. Auditoría", category: "auditoria", avg_time_minutes: 12, bot_avg_time_minutes: 4, mode: "human", assigned_count: 2, assigned_bots: 0, pass_through_rate: 0.1, share_bot_pool: false },
-        { name: "4. Radicación", category: "radicacion", avg_time_minutes: 3.5, bot_avg_time_minutes: 3.5, mode: "bot", assigned_count: 0, assigned_bots: 3, pass_through_rate: 1.0, share_bot_pool: true },
+        { name: "1. Liquidación", category: "liquidacion", avg_time_minutes: 5, bot_avg_time_minutes: 3, mode: "human", human_role: "auxiliar", assigned_count: 9, assigned_bots: 0, pass_through_rate: 1.0, share_bot_pool: false },
+        { name: "2. Armado de Cuentas", category: "armado_cuentas", avg_time_minutes: 8, bot_avg_time_minutes: 4, mode: "bot", human_role: "auxiliar", assigned_count: 0, assigned_bots: 3, pass_through_rate: 1.0, share_bot_pool: true },
+        { name: "3. Auditoría", category: "auditoria", avg_time_minutes: 12, bot_avg_time_minutes: 4, mode: "human", human_role: "tecnico", assigned_count: 2, assigned_bots: 0, pass_through_rate: 0.1, share_bot_pool: false },
+        { name: "4. Radicación", category: "radicacion", avg_time_minutes: 3.5, bot_avg_time_minutes: 3.5, mode: "bot", human_role: "tecnico", assigned_count: 0, assigned_bots: 3, pass_through_rate: 1.0, share_bot_pool: true },
       ];
     } else if (preset === "relay_bots") {
       next = [
-        { name: "1. Liquidación", category: "liquidacion", avg_time_minutes: 5, bot_avg_time_minutes: 3, mode: "human", assigned_count: 9, assigned_bots: 0, pass_through_rate: 1.0, share_bot_pool: false },
-        { name: "2. Armado de Cuentas", category: "armado_cuentas", avg_time_minutes: 8, bot_avg_time_minutes: 4, mode: "mix", assigned_count: 2, assigned_bots: 2, pass_through_rate: 1.0, share_bot_pool: false },
-        { name: "3. Auditoría", category: "auditoria", avg_time_minutes: 12, bot_avg_time_minutes: 4, mode: "human", assigned_count: 2, assigned_bots: 0, pass_through_rate: 0.1, share_bot_pool: false },
-        { name: "4. Radicación", category: "radicacion", avg_time_minutes: 3.5, bot_avg_time_minutes: 3.5, mode: "bot", assigned_count: 0, assigned_bots: 2, pass_through_rate: 1.0, share_bot_pool: false },
+        { name: "1. Liquidación", category: "liquidacion", avg_time_minutes: 5, bot_avg_time_minutes: 3, mode: "human", human_role: "auxiliar", assigned_count: 9, assigned_bots: 0, pass_through_rate: 1.0, share_bot_pool: false },
+        { name: "2. Armado de Cuentas", category: "armado_cuentas", avg_time_minutes: 8, bot_avg_time_minutes: 4, mode: "mix", human_role: "auxiliar", assigned_count: 2, assigned_bots: 2, pass_through_rate: 1.0, share_bot_pool: false },
+        { name: "3. Auditoría", category: "auditoria", avg_time_minutes: 12, bot_avg_time_minutes: 4, mode: "human", human_role: "tecnico", assigned_count: 2, assigned_bots: 0, pass_through_rate: 0.1, share_bot_pool: false },
+        { name: "4. Radicación", category: "radicacion", avg_time_minutes: 3.5, bot_avg_time_minutes: 3.5, mode: "bot", human_role: "tecnico", assigned_count: 0, assigned_bots: 2, pass_through_rate: 1.0, share_bot_pool: false },
       ];
     } else {
       next = DEFAULT_PIPELINE_STAGES;
@@ -312,6 +321,28 @@ export function App() {
       </header>
 
       <main className="mx-auto max-w-7xl space-y-6 px-6 py-7">
+        <ScenarioLibrary
+          currentState={{ processCfg, humanProfile, botProfile, congestionAlpha, pipelineStages, tecnicoMonthlyCost }}
+          onLoadExercise={(ex) => {
+            setProcessCfg(ex.processCfg);
+            setHumanProfile(ex.humanProfile);
+            setBotProfile(ex.botProfile);
+            setCongestionAlpha(ex.congestionAlpha);
+            setPipelineStages(ex.pipelineStages);
+            if (typeof ex.tecnicoMonthlyCost === "number") setTecnicoMonthlyCost(ex.tecnicoMonthlyCost);
+            handleRunPipeline(ex.pipelineStages);
+          }}
+          onResetDefaults={() => {
+            setProcessCfg(DEFAULT_PROCESS);
+            setHumanProfile(DEFAULT_HUMAN);
+            setBotProfile(DEFAULT_BOT);
+            setCongestionAlpha(0.03);
+            setTecnicoMonthlyCost(3_800_000);
+            setPipelineStages(DEFAULT_PIPELINE_STAGES);
+            handleRunPipeline(DEFAULT_PIPELINE_STAGES);
+          }}
+        />
+
         {error && (
           <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 shadow-sm">
             {error}
@@ -557,8 +588,14 @@ export function App() {
               onApplyPreset={handleApplyPipelinePreset}
               result={pipelineResult}
               botEscalationRate={botProfile.exception_escalation_rate}
-              humanMonthlyCost={humanProfile.monthly_cost}
+              auxiliarMonthlyCost={humanProfile.monthly_cost}
+              tecnicoMonthlyCost={tecnicoMonthlyCost}
               botMonthlyCost={botProfile.monthly_cost}
+              onChangeCosts={({ auxiliar, tecnico, bot }) => {
+                setHumanProfile((prev) => ({ ...prev, monthly_cost: auxiliar }));
+                setTecnicoMonthlyCost(tecnico);
+                setBotProfile((prev) => ({ ...prev, monthly_cost: bot }));
+              }}
             />
 
             <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">

@@ -18,12 +18,15 @@ interface Props {
   stages: EditablePipelineStage[];
   result: PipelineResult | null;
   botEscalationRate: number;
-  humanMonthlyCost: number;
+  auxiliarMonthlyCost: number;
+  tecnicoMonthlyCost: number;
   botMonthlyCost: number;
+  onChangeCosts: (costs: { auxiliar: number; tecnico: number; bot: number }) => void;
 }
 
 interface SavedScenarioSnapshot {
-  humans: number;
+  auxiliares: number;
+  tecnicos: number;
   bots: number;
   monthlyCost: number;
   costPerInvoice: number;
@@ -34,8 +37,10 @@ export function PipelineAnalyst({
   stages,
   result,
   botEscalationRate,
-  humanMonthlyCost,
+  auxiliarMonthlyCost,
+  tecnicoMonthlyCost,
   botMonthlyCost,
+  onChangeCosts,
 }: Props) {
   const [savedRef, setSavedRef] = useState<SavedScenarioSnapshot | null>(null);
   if (!result || result.stages.length === 0) return null;
@@ -47,11 +52,18 @@ export function PipelineAnalyst({
   const bnPct = (bnUtil * 100).toFixed(1);
   const isHealthyFlow = bnUtil <= 0.85;
 
-  // Totales reales de equipo en la cadena (respetando pool compartido de bots)
-  const totalHumans = stages.reduce(
-    (acc, st) => acc + (st.mode === "human" || st.mode === "mix" ? st.assigned_count : 0),
+  // Totales reales de equipo en la cadena (respetando roles Auxiliar/Técnico y pool compartido de bots)
+  const totalAuxiliares = stages.reduce(
+    (acc, st) =>
+      acc + ((st.mode === "human" || st.mode === "mix") && (st.human_role ?? "auxiliar") === "auxiliar" ? st.assigned_count : 0),
     0
   );
+  const totalTecnicos = stages.reduce(
+    (acc, st) =>
+      acc + ((st.mode === "human" || st.mode === "mix") && st.human_role === "tecnico" ? st.assigned_count : 0),
+    0
+  );
+  const totalHumans = totalAuxiliares + totalTecnicos;
   const pooledBotMax = stages.reduce(
     (maxB, st) => (st.mode !== "human" && st.share_bot_pool ? Math.max(maxB, st.assigned_bots) : maxB),
     0
@@ -61,7 +73,9 @@ export function PipelineAnalyst({
     0
   );
   const totalBots = pooledBotMax + nonPooledBots;
-  const totalHumanCost = totalHumans * humanMonthlyCost;
+  const totalAuxCost = totalAuxiliares * auxiliarMonthlyCost;
+  const totalTecCost = totalTecnicos * tecnicoMonthlyCost;
+  const totalHumanCost = totalAuxCost + totalTecCost;
   const totalBotCost = totalBots * botMonthlyCost;
   const totalMonthlyCost = totalHumanCost + totalBotCost;
   const chainDemand = Math.max(...result.stages.map((s) => s.effective_demand_with_rework), 1);
@@ -244,7 +258,8 @@ export function PipelineAnalyst({
               type="button"
               onClick={() =>
                 setSavedRef({
-                  humans: totalHumans,
+                  auxiliares: totalAuxiliares,
+                  tecnicos: totalTecnicos,
                   bots: totalBots,
                   monthlyCost: totalMonthlyCost,
                   costPerInvoice,
@@ -268,7 +283,50 @@ export function PipelineAnalyst({
           </div>
         </div>
 
-        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {/* Costos unitarios editables por rol */}
+        <div className="mt-3 grid grid-cols-1 gap-2.5 rounded-lg border border-slate-200/80 bg-white p-3 sm:grid-cols-3">
+          <label className="flex flex-col text-[11px] text-slate-600">
+            <span>Costo Auxiliar ($/mes · carga prestacional)</span>
+            <input
+              type="number"
+              min={0}
+              step={100000}
+              value={auxiliarMonthlyCost}
+              onChange={(e) =>
+                onChangeCosts({ auxiliar: Math.max(0, Number(e.target.value)), tecnico: tecnicoMonthlyCost, bot: botMonthlyCost })
+              }
+              className="mt-1 rounded border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-900"
+            />
+          </label>
+          <label className="flex flex-col text-[11px] text-slate-600">
+            <span>Costo Técnico ($/mes · Auditoría/Radicación)</span>
+            <input
+              type="number"
+              min={0}
+              step={100000}
+              value={tecnicoMonthlyCost}
+              onChange={(e) =>
+                onChangeCosts({ auxiliar: auxiliarMonthlyCost, tecnico: Math.max(0, Number(e.target.value)), bot: botMonthlyCost })
+              }
+              className="mt-1 rounded border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-900"
+            />
+          </label>
+          <label className="flex flex-col text-[11px] text-violet-700">
+            <span>Costo Bot RPA ($/mes)</span>
+            <input
+              type="number"
+              min={0}
+              step={100000}
+              value={botMonthlyCost}
+              onChange={(e) =>
+                onChangeCosts({ auxiliar: auxiliarMonthlyCost, tecnico: tecnicoMonthlyCost, bot: Math.max(0, Number(e.target.value)) })
+              }
+              className="mt-1 rounded border border-violet-200 px-2.5 py-1 text-xs font-semibold text-violet-900"
+            />
+          </label>
+        </div>
+
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
           <div className="rounded-lg bg-white p-3 shadow-sm">
             <div className="text-[11px] text-slate-500">Costo Total Mensual</div>
             <div className="mt-0.5 text-base font-bold tabular-nums text-slate-900">
@@ -282,13 +340,19 @@ export function PipelineAnalyst({
             </div>
           </div>
           <div className="rounded-lg bg-white p-3 shadow-sm">
-            <div className="text-[11px] text-slate-500">Nómina Humana ({totalHumans})</div>
+            <div className="text-[11px] text-slate-500">Auxiliares ({totalAuxiliares})</div>
             <div className="mt-0.5 text-sm font-semibold tabular-nums text-slate-800">
-              ${totalHumanCost.toLocaleString()}
+              ${totalAuxCost.toLocaleString()}
             </div>
           </div>
           <div className="rounded-lg bg-white p-3 shadow-sm">
-            <div className="text-[11px] text-slate-500">Licencias RPA ({totalBots})</div>
+            <div className="text-[11px] text-slate-500">Técnicos ({totalTecnicos})</div>
+            <div className="mt-0.5 text-sm font-semibold tabular-nums text-slate-800">
+              ${totalTecCost.toLocaleString()}
+            </div>
+          </div>
+          <div className="rounded-lg bg-white p-3 shadow-sm">
+            <div className="text-[11px] text-slate-500">Bots RPA ({totalBots})</div>
             <div className="mt-0.5 text-sm font-semibold tabular-nums text-violet-700">
               ${totalBotCost.toLocaleString()}
             </div>
@@ -306,7 +370,10 @@ export function PipelineAnalyst({
             }`}
           >
             <span>
-              <strong>Comparativa vs. Escenario A ({savedRef.humans}H + {savedRef.bots}B · ${savedRef.monthlyCost.toLocaleString()}/mes):</strong>{" "}
+              <strong>
+                Comparativa vs. Escenario A ({savedRef.auxiliares} Aux + {savedRef.tecnicos} Téc + {savedRef.bots} Bot · $
+                {savedRef.monthlyCost.toLocaleString()}/mes):
+              </strong>{" "}
               {refDiff > 0
                 ? `Este escenario es más costo-efectivo: ahorras $${refDiff.toLocaleString()}/mes ($${Math.round(
                     savedRef.costPerInvoice - costPerInvoice
