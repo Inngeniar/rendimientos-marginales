@@ -89,9 +89,12 @@ export interface PipelineStageResult {
   utilization_rate: number;
   is_bottleneck: boolean;
   recommended_count: number;
+  safe_recommended_count?: number;
   pass_through_rate?: number;
   shared_pool?: string | null;
   pool_utilization_rate?: number | null;
+  human_utilization_rate?: number | null;
+  bot_utilization_rate?: number | null;
 }
 
 export interface PipelineResult {

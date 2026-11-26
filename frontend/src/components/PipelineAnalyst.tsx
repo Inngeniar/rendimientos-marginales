@@ -16,23 +16,21 @@ export function PipelineAnalyst({ stages, result }: Props) {
   const bnUtil = bottleneck.pool_utilization_rate ?? bottleneck.utilization_rate;
   const bnPct = (bnUtil * 100).toFixed(1);
 
-  // Calcular dotación ideal para mantener el cuello <= 85% (margen sano sin colas)
-  const unitCap =
-    bottleneckCfg.assigned_count > 0
-      ? bottleneck.stage_monthly_capacity / bottleneckCfg.assigned_count
-      : 0;
-  const safeRecommendedCount =
-    unitCap > 0 && bottleneck.effective_demand_with_rework > 0
-      ? Math.max(
-          bottleneck.recommended_count,
-          Math.ceil(bottleneck.effective_demand_with_rework / (unitCap * 0.85))
-        )
-      : bottleneck.recommended_count;
+  const safeRecommendedCount = bottleneck.safe_recommended_count ?? bottleneck.recommended_count;
+  const currentBnUnits =
+    bottleneckCfg.mode === "bot"
+      ? bottleneckCfg.assigned_bots
+      : bottleneckCfg.mode === "human"
+        ? bottleneckCfg.assigned_count
+        : Math.max(bottleneckCfg.assigned_count, bottleneckCfg.assigned_bots);
 
   // Etapas con holgura o exceso de recursos asignados
   const overstaffedStages = result.stages
     .map((st, idx) => ({ st, cfg: stages[idx] }))
-    .filter(({ st, cfg }) => !st.is_bottleneck && cfg.assigned_count > st.recommended_count && st.recommended_count > 0);
+    .filter(({ st, cfg }) => {
+      const assigned = cfg.mode === "bot" ? cfg.assigned_bots : cfg.assigned_count;
+      return !st.is_bottleneck && cfg.mode !== "mix" && assigned > st.recommended_count && st.recommended_count > 0;
+    });
 
   // Etapas distintas al cuello que también superan 85% (riesgo secundario)
   const nearLimitStages = result.stages
@@ -62,16 +60,21 @@ export function PipelineAnalyst({ stages, result }: Props) {
   const actions: string[] = [];
 
   if (bnUtil > 0.85) {
-    if (safeRecommendedCount > bottleneckCfg.assigned_count) {
-      const projectedUtil =
-        ((bottleneck.effective_demand_with_rework / (unitCap * safeRecommendedCount)) * 100).toFixed(1);
+    if (bottleneckCfg.mode === "mix" && bottleneck.human_utilization_rate != null && bottleneck.bot_utilization_rate != null) {
+      const subTarget =
+        bottleneck.bot_utilization_rate >= bottleneck.human_utilization_rate ? "Bots RPA" : "Humanos";
       actions.push(
-        `Aumenta ${bottleneck.process_name} de ${bottleneckCfg.assigned_count} a ${safeRecommendedCount} ${
-          bottleneckCfg.resource_type === "bot" ? "bot(s)" : "persona(s)"
+        `En ${bottleneck.process_name} (modo Mixto), el límite lo está marcando el equipo de ${subTarget}. Sube 1 unidad de ${subTarget} para llevar la etapa por debajo del 85%.`
+      );
+    } else if (safeRecommendedCount > currentBnUnits) {
+      const projectedUtil = ((bnUtil * currentBnUnits) / safeRecommendedCount * 100).toFixed(1);
+      actions.push(
+        `Aumenta ${bottleneck.process_name} de ${currentBnUnits} a ${safeRecommendedCount} ${
+          bottleneckCfg.mode === "bot" ? "bot(s)" : "persona(s)"
         }: su ocupación bajaría de ${bnPct}% a ~${projectedUtil}% (zona segura ≤ 85%).`
       );
     }
-    if (bottleneckCfg.resource_type === "human" && bottleneck.category === "auditoria") {
+    if (bottleneckCfg.mode !== "bot" && bottleneck.category === "auditoria") {
       actions.push(
         `Si el Bot de Armado ya valida RIPS/soportes antes, puedes bajar el "% Demanda que pasa" en Auditoría (actual: ${Math.round(
           bottleneckCfg.pass_through_rate * 100
@@ -87,10 +90,10 @@ export function PipelineAnalyst({ stages, result }: Props) {
 
   if (overstaffedStages.length > 0) {
     const details = overstaffedStages
-      .map(
-        ({ st, cfg }) =>
-          `${st.process_name} (tienes ${cfg.assigned_count}, necesitas ${st.recommended_count})`
-      )
+      .map(({ st, cfg }) => {
+        const assigned = cfg.mode === "bot" ? cfg.assigned_bots : cfg.assigned_count;
+        return `${st.process_name} (tienes ${assigned}, mínimo ${st.recommended_count})`;
+      })
       .join("; ");
     actions.push(
       `Reasigna capacidad ociosa: hay holgura en ${details}. Mover ese recurso o reducir esa asignación optimiza el costo mensual sin afectar la producción.`

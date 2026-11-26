@@ -82,7 +82,12 @@ class MixOptimizeResult(BaseModel):
 class PipelineStageInput(BaseModel):
     process: ProcessConfig
     resource: ResourceProfile
-    assigned_count: int = Field(ge=1, default=1)
+    assigned_count: int = Field(ge=0, default=1)
+    bot_resource: ResourceProfile | None = Field(
+        default=None,
+        description="Perfil de Bot RPA opcional cuando la etapa combina Humanos y Bots",
+    )
+    assigned_bots: int = Field(ge=0, default=0)
     pass_through_rate: float = Field(
         ge=0.0,
         le=1.0,
@@ -108,9 +113,12 @@ class PipelineStageResult(BaseModel):
     utilization_rate: float
     is_bottleneck: bool
     recommended_count: int
+    safe_recommended_count: int = 1
     pass_through_rate: float = 1.0
     shared_pool: str | None = None
     pool_utilization_rate: float | None = None
+    human_utilization_rate: float | None = None
+    bot_utilization_rate: float | None = None
 
 
 class PipelineResult(BaseModel):

@@ -83,10 +83,10 @@ const DEFAULT_BOT: ResourceProfile = {
 };
 
 const DEFAULT_PIPELINE_STAGES: EditablePipelineStage[] = [
-  { name: "1. Liquidación", category: "liquidacion", avg_time_minutes: 8, resource_type: "human", assigned_count: 6, pass_through_rate: 1.0, share_bot_pool: false },
-  { name: "2. Armado de Cuentas", category: "armado_cuentas", avg_time_minutes: 8, resource_type: "human", assigned_count: 6, pass_through_rate: 1.0, share_bot_pool: false },
-  { name: "3. Auditoría", category: "auditoria", avg_time_minutes: 15, resource_type: "human", assigned_count: 8, pass_through_rate: 1.0, share_bot_pool: false },
-  { name: "4. Radicación", category: "radicacion", avg_time_minutes: 3, resource_type: "human", assigned_count: 6, pass_through_rate: 1.0, share_bot_pool: false },
+  { name: "1. Liquidación", category: "liquidacion", avg_time_minutes: 8, mode: "human", assigned_count: 6, assigned_bots: 0, pass_through_rate: 1.0, share_bot_pool: false },
+  { name: "2. Armado de Cuentas", category: "armado_cuentas", avg_time_minutes: 8, mode: "human", assigned_count: 6, assigned_bots: 0, pass_through_rate: 1.0, share_bot_pool: false },
+  { name: "3. Auditoría", category: "auditoria", avg_time_minutes: 15, mode: "human", assigned_count: 8, assigned_bots: 0, pass_through_rate: 1.0, share_bot_pool: false },
+  { name: "4. Radicación", category: "radicacion", avg_time_minutes: 3, mode: "human", assigned_count: 6, assigned_bots: 0, pass_through_rate: 1.0, share_bot_pool: false },
 ];
 
 export function App() {
@@ -156,10 +156,12 @@ export function App() {
             category: st.category,
             avg_time_minutes: st.avg_time_minutes,
           },
-          resource: st.resource_type === "bot" ? botProfile : humanProfile,
-          assigned_count: st.assigned_count,
+          resource: st.mode === "bot" ? botProfile : humanProfile,
+          assigned_count: st.mode === "bot" ? Math.max(1, st.assigned_bots) : st.assigned_count,
+          bot_resource: st.mode === "mix" ? botProfile : null,
+          assigned_bots: st.mode === "mix" ? st.assigned_bots : 0,
           pass_through_rate: st.pass_through_rate,
-          shared_pool: st.resource_type === "bot" && st.share_bot_pool ? "bot-rpa-compartido" : null,
+          shared_pool: st.mode !== "human" && st.share_bot_pool ? "bot-rpa-compartido" : null,
         }))
       );
       setPipelineResult(res);
@@ -172,17 +174,17 @@ export function App() {
     let next: EditablePipelineStage[];
     if (preset === "shared_bot") {
       next = [
-        { name: "1. Liquidación", category: "liquidacion", avg_time_minutes: 5, resource_type: "human", assigned_count: 6, pass_through_rate: 1.0, share_bot_pool: false },
-        { name: "2. Armado de Cuentas", category: "armado_cuentas", avg_time_minutes: 8, resource_type: "bot", assigned_count: 8, pass_through_rate: 1.0, share_bot_pool: true },
-        { name: "3. Auditoría", category: "auditoria", avg_time_minutes: 12, resource_type: "human", assigned_count: 2, pass_through_rate: 0.1, share_bot_pool: false },
-        { name: "4. Radicación", category: "radicacion", avg_time_minutes: 3, resource_type: "bot", assigned_count: 8, pass_through_rate: 1.0, share_bot_pool: true },
+        { name: "1. Liquidación", category: "liquidacion", avg_time_minutes: 5, mode: "human", assigned_count: 9, assigned_bots: 0, pass_through_rate: 1.0, share_bot_pool: false },
+        { name: "2. Armado de Cuentas", category: "armado_cuentas", avg_time_minutes: 8, mode: "bot", assigned_count: 0, assigned_bots: 3, pass_through_rate: 1.0, share_bot_pool: true },
+        { name: "3. Auditoría", category: "auditoria", avg_time_minutes: 12, mode: "human", assigned_count: 2, assigned_bots: 0, pass_through_rate: 0.1, share_bot_pool: false },
+        { name: "4. Radicación", category: "radicacion", avg_time_minutes: 3, mode: "bot", assigned_count: 0, assigned_bots: 3, pass_through_rate: 1.0, share_bot_pool: true },
       ];
     } else if (preset === "relay_bots") {
       next = [
-        { name: "1. Liquidación", category: "liquidacion", avg_time_minutes: 5, resource_type: "human", assigned_count: 6, pass_through_rate: 1.0, share_bot_pool: false },
-        { name: "2. Armado de Cuentas", category: "armado_cuentas", avg_time_minutes: 8, resource_type: "bot", assigned_count: 5, pass_through_rate: 1.0, share_bot_pool: false },
-        { name: "3. Auditoría", category: "auditoria", avg_time_minutes: 12, resource_type: "human", assigned_count: 2, pass_through_rate: 0.1, share_bot_pool: false },
-        { name: "4. Radicación", category: "radicacion", avg_time_minutes: 3, resource_type: "bot", assigned_count: 2, pass_through_rate: 1.0, share_bot_pool: false },
+        { name: "1. Liquidación", category: "liquidacion", avg_time_minutes: 5, mode: "human", assigned_count: 9, assigned_bots: 0, pass_through_rate: 1.0, share_bot_pool: false },
+        { name: "2. Armado de Cuentas", category: "armado_cuentas", avg_time_minutes: 8, mode: "mix", assigned_count: 1, assigned_bots: 2, pass_through_rate: 1.0, share_bot_pool: false },
+        { name: "3. Auditoría", category: "auditoria", avg_time_minutes: 12, mode: "human", assigned_count: 2, assigned_bots: 0, pass_through_rate: 0.1, share_bot_pool: false },
+        { name: "4. Radicación", category: "radicacion", avg_time_minutes: 3, mode: "bot", assigned_count: 0, assigned_bots: 2, pass_through_rate: 1.0, share_bot_pool: false },
       ];
     } else {
       next = DEFAULT_PIPELINE_STAGES;

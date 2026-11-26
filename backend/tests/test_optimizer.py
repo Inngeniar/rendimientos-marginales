@@ -84,3 +84,34 @@ def test_pipeline_audit_sampling_and_shared_bot_pool():
     assert aud_res.utilization_rate < 0.5
     assert arm_res.pool_utilization_rate == 1.0
     assert result.max_end_to_end_monthly_throughput == 2400.0
+
+
+def test_pipeline_mixed_human_and_bot_stage():
+    armado = ProcessConfig(name="2. Armado Mixto", category="armado_cuentas", expected_monthly_demand=10000, avg_time_minutes=8, rework_return_rate=0.0)
+    human = ResourceProfile(resource_type="human", available_hours_per_day=8, available_days_per_month=22, inefficiency_rate=0.1)
+    bot = ResourceProfile(
+        resource_type="bot",
+        available_hours_per_day=12,
+        available_days_per_month=30,
+        speed_multiplier=1.5,
+        inefficiency_rate=0.03,
+        exception_escalation_rate=0.15,
+    )
+    res = analyze_pipeline(
+        PipelineRequest(
+            stages=[
+                PipelineStageInput(
+                    process=armado,
+                    resource=human,
+                    assigned_count=2,
+                    bot_resource=bot,
+                    assigned_bots=2,
+                )
+            ]
+        )
+    )
+    st = res.stages[0]
+    assert st.bot_utilization_rate is not None
+    assert st.human_utilization_rate is not None
+    assert st.utilization_rate == max(st.bot_utilization_rate, st.human_utilization_rate)
+    assert st.safe_recommended_count >= st.recommended_count

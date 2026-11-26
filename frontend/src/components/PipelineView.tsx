@@ -1,13 +1,16 @@
-import { AlertTriangle, Bot, CheckCircle2, Layers, User } from "lucide-react";
-import type { PipelineResult, ProcessCategory, ResourceType } from "../types/models";
+import { AlertTriangle, Bot, CheckCircle2, Layers, User, Users } from "lucide-react";
+import type { PipelineResult, ProcessCategory } from "../types/models";
 import { PipelineAnalyst } from "./PipelineAnalyst";
+
+export type StageResourceMode = "human" | "bot" | "mix";
 
 export interface EditablePipelineStage {
   name: string;
   category: ProcessCategory;
   avg_time_minutes: number;
-  resource_type: ResourceType;
+  mode: StageResourceMode;
   assigned_count: number;
+  assigned_bots: number;
   pass_through_rate: number;
   share_bot_pool: boolean;
 }
@@ -34,7 +37,7 @@ export function PipelineView({ stages, onChangeStages, onApplyPreset, result }: 
               Flujo Integral Editable: Liquidación → Armado → Auditoría → Radicación
             </h3>
             <p className="text-xs text-slate-500">
-              Configura recursos (Humano o Bot RPA), muestreo aleatorio de auditoría (%) y pool compartido de bots
+              Elige por etapa: solo Humanos, solo Bot RPA o Mixto (Humano + Bot), muestreo de auditoría (%) y pool compartido
             </p>
           </div>
           {result && (
@@ -103,12 +106,18 @@ export function PipelineView({ stages, onChangeStages, onApplyPreset, result }: 
 
                   {/* Controles editables por etapa */}
                   <div className="mt-3 space-y-2 rounded-lg border border-slate-200/70 bg-white p-2.5 text-xs">
-                    <div className="grid grid-cols-2 gap-1.5">
+                    <div className="grid grid-cols-3 gap-1">
                       <button
                         type="button"
-                        onClick={() => updateStage(idx, { resource_type: "human", share_bot_pool: false })}
-                        className={`flex items-center justify-center gap-1 rounded-md py-1 text-[11px] font-semibold transition ${
-                          cfg.resource_type === "human"
+                        onClick={() =>
+                          updateStage(idx, {
+                            mode: "human",
+                            assigned_count: Math.max(1, cfg.assigned_count),
+                            share_bot_pool: false,
+                          })
+                        }
+                        className={`flex items-center justify-center gap-1 rounded-md py-1 text-[10px] font-semibold transition ${
+                          cfg.mode === "human"
                             ? "bg-slate-900 text-white"
                             : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                         }`}
@@ -117,33 +126,74 @@ export function PipelineView({ stages, onChangeStages, onApplyPreset, result }: 
                       </button>
                       <button
                         type="button"
-                        onClick={() => updateStage(idx, { resource_type: "bot" })}
-                        className={`flex items-center justify-center gap-1 rounded-md py-1 text-[11px] font-semibold transition ${
-                          cfg.resource_type === "bot"
+                        onClick={() =>
+                          updateStage(idx, {
+                            mode: "bot",
+                            assigned_bots: Math.max(1, cfg.assigned_bots || 1),
+                          })
+                        }
+                        className={`flex items-center justify-center gap-1 rounded-md py-1 text-[10px] font-semibold transition ${
+                          cfg.mode === "bot"
                             ? "bg-violet-600 text-white"
                             : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                         }`}
                       >
-                        <Bot className="h-3 w-3" /> Bot RPA
+                        <Bot className="h-3 w-3" /> Bot
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateStage(idx, {
+                            mode: "mix",
+                            assigned_count: Math.max(1, cfg.assigned_count || 1),
+                            assigned_bots: Math.max(1, cfg.assigned_bots || 1),
+                          })
+                        }
+                        className={`flex items-center justify-center gap-1 rounded-md py-1 text-[10px] font-semibold transition ${
+                          cfg.mode === "mix"
+                            ? "bg-indigo-600 text-white"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        }`}
+                      >
+                        <Users className="h-3 w-3" /> Mixto
                       </button>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2">
-                      <label className="flex flex-col text-[11px] text-slate-600">
-                        Cantidad
-                        <input
-                          type="number"
-                          min={1}
-                          max={200}
-                          value={cfg.assigned_count}
-                          onChange={(e) =>
-                            updateStage(idx, { assigned_count: Math.max(1, Number(e.target.value)) })
-                          }
-                          className="mt-0.5 rounded border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-900"
-                        />
-                      </label>
-                      <label className="flex flex-col text-[11px] text-slate-600">
-                        Tiempo (min)
+                      {(cfg.mode === "human" || cfg.mode === "mix") && (
+                        <label className="flex flex-col text-[11px] text-slate-600">
+                          Humanos
+                          <input
+                            type="number"
+                            min={1}
+                            max={200}
+                            value={cfg.assigned_count}
+                            onChange={(e) =>
+                              updateStage(idx, { assigned_count: Math.max(1, Number(e.target.value)) })
+                            }
+                            className="mt-0.5 rounded border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-900"
+                          />
+                        </label>
+                      )}
+
+                      {(cfg.mode === "bot" || cfg.mode === "mix") && (
+                        <label className="flex flex-col text-[11px] text-violet-700">
+                          Bots RPA
+                          <input
+                            type="number"
+                            min={1}
+                            max={100}
+                            value={cfg.assigned_bots}
+                            onChange={(e) =>
+                              updateStage(idx, { assigned_bots: Math.max(1, Number(e.target.value)) })
+                            }
+                            className="mt-0.5 rounded border border-violet-200 px-2 py-1 text-xs font-semibold text-violet-900"
+                          />
+                        </label>
+                      )}
+
+                      <label className={`flex flex-col text-[11px] text-slate-600 ${cfg.mode === "mix" ? "col-span-2" : ""}`}>
+                        Tiempo estándar (min)
                         <input
                           type="number"
                           min={0.5}
@@ -175,7 +225,7 @@ export function PipelineView({ stages, onChangeStages, onApplyPreset, result }: 
                       />
                     </label>
 
-                    {cfg.resource_type === "bot" && (
+                    {(cfg.mode === "bot" || cfg.mode === "mix") && (
                       <label className="flex cursor-pointer items-center gap-1.5 pt-0.5 text-[11px] font-medium text-violet-800">
                         <input
                           type="checkbox"
@@ -207,6 +257,13 @@ export function PipelineView({ stages, onChangeStages, onApplyPreset, result }: 
                       />
                     </div>
 
+                    {cfg.mode === "mix" && st.human_utilization_rate != null && st.bot_utilization_rate != null && (
+                      <div className="mt-1.5 flex justify-between text-[10px] font-medium text-slate-500">
+                        <span>Humanos: {(st.human_utilization_rate * 100).toFixed(0)}%</span>
+                        <span className="text-violet-700">Bots: {(st.bot_utilization_rate * 100).toFixed(0)}%</span>
+                      </div>
+                    )}
+
                     <dl className="mt-3 space-y-1 text-xs text-slate-600">
                       <div className="flex justify-between">
                         <dt>Demanda etapa:</dt>
@@ -221,8 +278,13 @@ export function PipelineView({ stages, onChangeStages, onApplyPreset, result }: 
                         </dd>
                       </div>
                       <div className="flex justify-between border-t border-slate-200/70 pt-1">
-                        <dt>Recomendado:</dt>
-                        <dd className="font-bold tabular-nums text-indigo-700">{st.recommended_count}</dd>
+                        <dt>Mínimo / Seguro (≤85%):</dt>
+                        <dd className="font-bold tabular-nums text-indigo-700">
+                          {st.recommended_count}
+                          {st.safe_recommended_count && st.safe_recommended_count > st.recommended_count
+                            ? ` / ${st.safe_recommended_count}`
+                            : ""}
+                        </dd>
                       </div>
                     </dl>
                   </div>

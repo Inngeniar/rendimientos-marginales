@@ -63,6 +63,8 @@ export async function simulatePipeline(
     process: ProcessConfig;
     resource: ResourceProfile;
     assigned_count: number;
+    bot_resource?: ResourceProfile | null;
+    assigned_bots?: number;
     pass_through_rate?: number;
     shared_pool?: string | null;
   }>
