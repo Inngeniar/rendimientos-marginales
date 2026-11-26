@@ -101,16 +101,16 @@ const SOURCES = [
     usage: "Evaluación del flujo encadenado Liquidación → Armado de Cuentas → Auditoría → Radicación y detección de la etapa restricción.",
   },
   {
-    category: "Normativa Colombiana — Soportes, Glosas y Devoluciones",
-    title: "Resolución 2284 de 2023",
+    category: "Normativa Colombiana — Soportes, Glosas y Devoluciones (Vigente)",
+    title: "Resolución 2284 de 2023 (modificada por Res. 627 y 1885 de 2024)",
     author: "Ministerio de Salud y Protección Social (Colombia)",
-    usage: "Definición de soportes de cobro, tipificación de documentos, plazos de radicación y causales de devolución/glosa aplicadas al reproceso.",
+    usage: "Norma vigente que establece los soportes obligatorios de cobro, su tipificación, los plazos de radicación y el Manual Único de Devoluciones, Glosas y Respuestas (5 días devolución / 20 días glosa / 15 días respuesta) aplicadas al cálculo de reprocesos.",
   },
   {
-    category: "Normativa Colombiana — RIPS Electrónico y CUV",
-    title: "Resolución 2275 de 2023",
+    category: "Normativa Colombiana — RIPS Electrónico y CUV (Vigente)",
+    title: "Resolución 948 de 2026 (derogó la Res. 2275 de 2023)",
     author: "Ministerio de Salud y Protección Social (Colombia)",
-    usage: "Estandarización de validación previa RIPS JSON y obtención del Código Único de Validación (CUV) como requisito de radicación digital.",
+    usage: "Norma vigente (14 de mayo de 2026) que reglamenta el RIPS en formato JSON como soporte de la Factura Electrónica de Venta en salud (FEV) y el Código Único de Validación (CUV), derogando expresamente la Res. 2275 de 2023 y sus modificatorias (Res. 558 y 1884 de 2024).",
   },
   {
     category: "Normativa SOAT - ADRES",
