@@ -44,7 +44,8 @@ def simulate_pricing_and_tiers(req: PricingSimulationRequest) -> PricingSimulati
 
     for max_vol in tiers_max:
         proc_copy = req.process.model_copy(update={"expected_monthly_demand": float(max_vol)})
-        eff_demand = max_vol * (1.0 + req.process.rework_return_rate)
+        billable_vol = float(max_vol)
+        eff_demand = billable_vol * (1.0 + req.process.rework_return_rate)
         solo_humans = max(1, math.ceil(eff_demand / human_cap)) if human_cap > 0 else 1
 
         mix = optimize_human_bot_mix(
@@ -57,9 +58,10 @@ def simulate_pricing_and_tiers(req: PricingSimulationRequest) -> PricingSimulati
             )
         )
         op_cost = mix.total_monthly_cost
-        unit_cost = op_cost / eff_demand if eff_demand > 0 else 0.0
+        # El costo unitario y precio se prorratean sobre el volumen facturable neto (el retrabajo lo absorbe la operación)
+        unit_cost = op_cost / billable_vol if billable_vol > 0 else 0.0
         rec_unit_price = unit_cost / (1.0 - req.target_margin_pct)
-        rec_monthly_price = rec_unit_price * eff_demand
+        rec_monthly_price = rec_unit_price * billable_vol
 
         cur_res = (mix.optimal_humans, mix.optimal_bots)
         if prev_max == 0:
@@ -89,8 +91,8 @@ def simulate_pricing_and_tiers(req: PricingSimulationRequest) -> PricingSimulati
         prev_max = max_vol
         prev_resources = cur_res
 
-    # Evaluar modelos de monetización sobre la demanda objetivo actual
-    target_eff = req.process.expected_monthly_demand * (1.0 + req.process.rework_return_rate)
+    # Evaluar modelos de monetización: la dotación/costo cubre el retrabajo, pero al cliente se cobra solo Q facturable
+    billable_target = req.process.expected_monthly_demand
     target_mix = optimize_human_bot_mix(
         MixOptimizeRequest(
             process=req.process,
@@ -101,20 +103,20 @@ def simulate_pricing_and_tiers(req: PricingSimulationRequest) -> PricingSimulati
         )
     )
     base_cost = target_mix.total_monthly_cost
-    unit_cost_target = base_cost / target_eff if target_eff > 0 else 0.0
+    unit_cost_target = base_cost / billable_target if billable_target > 0 else 0.0
     target_price_unit = unit_cost_target / (1.0 - req.target_margin_pct)
-    target_rev = target_price_unit * target_eff
+    target_rev = target_price_unit * billable_target
 
     is_high_complexity = req.process.complexity in ("alta", "soat_adres_baja", "soat_adres_alta")
 
     # 1. Tarifa Fija por Factura
     rev_per_inv = target_rev
-    # 2. Suscripción Mensual por Rango (prima de estabilidad +8% sobre costo base)
+    # 2. Suscripción Mensual por Rango (prima de estabilidad +5%)
     rev_tier = target_rev * 1.05
-    # 3. Modelo Híbrido (60% fijo base + variable por factura con +10% margen en excedente)
+    # 3. Modelo Híbrido (Base fija 75% costo + variable 52% ingreso base)
     rev_hybrid = base_cost * 0.75 + (target_rev * 0.52)
-    # 4. Porcentaje sobre valor facturado / recaudo
-    rev_success = target_eff * req.avg_invoice_value * req.success_fee_pct
+    # 4. Porcentaje sobre valor facturado / recaudo (solo sobre volumen facturable al cliente)
+    rev_success = billable_target * req.avg_invoice_value * req.success_fee_pct
 
     raw_options = [
         {
@@ -129,7 +131,7 @@ def simulate_pricing_and_tiers(req: PricingSimulationRequest) -> PricingSimulati
             "model_id": "tiered_retainer",
             "model_name": "Suscripción Mensual por Rango (Paquete)",
             "rev": rev_tier,
-            "base_acceptance": 84 if target_eff >= 3000 else 79,
+            "base_acceptance": 84 if billable_target >= 3000 else 79,
             "pros": "Ingreso predecible y presupuesto fijo para la IPS/EPS dentro del rango.",
             "cons": "Requiere cláusula clara de salto de rango al superar el tope de facturas.",
         },
@@ -165,7 +167,7 @@ def simulate_pricing_and_tiers(req: PricingSimulationRequest) -> PricingSimulati
         prof_score = max(10, min(100, int(round(margin_pct * 200))))
 
         # Aceptación dinámica: penaliza si el cobro unitario excede 2.5x el precio objetivo o >5% del valor factura
-        unit_price_opt = rev / target_eff if target_eff > 0 else 0.0
+        unit_price_opt = rev / billable_target if billable_target > 0 else 0.0
         price_ratio = unit_price_opt / target_price_unit if target_price_unit > 0 else 1.0
         ticket_share = unit_price_opt / req.avg_invoice_value if req.avg_invoice_value > 0 else 0.0
         acc_penalty = 0

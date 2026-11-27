@@ -191,14 +191,14 @@ export function TheoryAndSources() {
           <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-4 text-xs leading-relaxed text-slate-700">
             <h4 className="mb-2 font-bold text-slate-900">1. Cálculo del Ingreso Mensual por Modelo</h4>
             <p className="mb-2">
-              Sea <code>C_op</code> el costo operativo del mix óptimo (Humanos + Bots), <code>Q_eff</code> la demanda
-              efectiva (incluyendo retrabajo) y <code>m</code> el margen objetivo (ej. 30%). El ingreso base objetivo
-              es <code>I_base = C_op / (1 - m)</code>:
+              Sea <code>C_op</code> el costo operativo del mix óptimo (dimensionado incluyendo el retrabajo interno),{" "}
+              <code>Q</code> la demanda facturable neta al cliente (sin cobrar retrabajo) y <code>m</code> el margen
+              objetivo (ej. 30%). El ingreso base objetivo es <code>I_base = C_op / (1 - m)</code>:
             </p>
             <ul className="list-disc space-y-1 pl-4">
               <li>
-                <strong>Tarifa Fija por Factura:</strong> <code>I = I_base</code> (precio unitario exacto para lograr el
-                margen <code>m</code>).
+                <strong>Tarifa Fija por Factura:</strong> <code>I = I_base</code> (precio unitario sobre <code>Q</code>{" "}
+                para lograr el margen <code>m</code> absorbiendo el retrabajo).
               </li>
               <li>
                 <strong>Suscripción por Rango (Paquete):</strong> <code>I = I_base × 1.05</code> (prima del +5% por
@@ -210,7 +210,7 @@ export function TheoryAndSources() {
               </li>
               <li>
                 <strong>% sobre Valor Facturado / Recaudo:</strong>{" "}
-                <code>I = Q_eff × Valor_Factura × %Comisión</code>.
+                <code>I = Q × Valor_Factura × %Comisión</code> (calculado solo sobre facturas válidas entregadas).
               </li>
             </ul>
           </div>
