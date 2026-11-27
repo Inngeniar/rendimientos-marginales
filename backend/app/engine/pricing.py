@@ -121,7 +121,7 @@ def simulate_pricing_and_tiers(req: PricingSimulationRequest) -> PricingSimulati
             "model_id": "per_invoice",
             "model_name": "Tarifa Fija por Factura (Transaccional)",
             "rev": rev_per_inv,
-            "acceptance": 88 if not is_high_complexity else 74,
+            "base_acceptance": 88 if not is_high_complexity else 74,
             "pros": "Transparente para el cliente y proporcional al volumen real.",
             "cons": "Riesgo de margen si llegan cuentas de complejidad atípica sin tarifa diferenciada.",
         },
@@ -129,7 +129,7 @@ def simulate_pricing_and_tiers(req: PricingSimulationRequest) -> PricingSimulati
             "model_id": "tiered_retainer",
             "model_name": "Suscripción Mensual por Rango (Paquete)",
             "rev": rev_tier,
-            "acceptance": 82,
+            "base_acceptance": 84 if target_eff >= 3000 else 79,
             "pros": "Ingreso predecible y presupuesto fijo para la IPS/EPS dentro del rango.",
             "cons": "Requiere cláusula clara de salto de rango al superar el tope de facturas.",
         },
@@ -137,7 +137,7 @@ def simulate_pricing_and_tiers(req: PricingSimulationRequest) -> PricingSimulati
             "model_id": "hybrid",
             "model_name": "Híbrido (Base Fija + Variable por Factura)",
             "rev": rev_hybrid,
-            "acceptance": 90,
+            "base_acceptance": 90,
             "pros": "Asegura cobertura de costos fijos/RPA y escala margen con el volumen.",
             "cons": "Requiere explicar dos componentes en la propuesta comercial.",
         },
@@ -145,7 +145,7 @@ def simulate_pricing_and_tiers(req: PricingSimulationRequest) -> PricingSimulati
             "model_id": "success_fee",
             "model_name": "% sobre Valor Facturado / Recuperado",
             "rev": rev_success,
-            "acceptance": 92 if is_high_complexity else 68,
+            "base_acceptance": 92 if is_high_complexity else 70,
             "pros": "Máxima aceptación y potencial de ingreso en cuentas de alto valor o SOAT-ADRES.",
             "cons": "Flujo de caja sujeto al ciclo de recaudo/auditoría del pagador.",
         },
@@ -163,7 +163,18 @@ def simulate_pricing_and_tiers(req: PricingSimulationRequest) -> PricingSimulati
         margin_amt = rev - base_cost
         margin_pct = (margin_amt / rev) if rev > 0 else 0.0
         prof_score = max(10, min(100, int(round(margin_pct * 200))))
-        acc_score = int(opt["acceptance"])
+
+        # Aceptación dinámica: penaliza si el cobro unitario excede 2.5x el precio objetivo o >5% del valor factura
+        unit_price_opt = rev / target_eff if target_eff > 0 else 0.0
+        price_ratio = unit_price_opt / target_price_unit if target_price_unit > 0 else 1.0
+        ticket_share = unit_price_opt / req.avg_invoice_value if req.avg_invoice_value > 0 else 0.0
+        acc_penalty = 0
+        if price_ratio > 2.5:
+            acc_penalty += min(25, int(round((price_ratio - 2.5) * 4)))
+        if ticket_share > 0.05:
+            acc_penalty += min(15, int(round((ticket_share - 0.05) * 200)))
+        acc_score = max(20, min(98, int(opt["base_acceptance"]) - acc_penalty))
+
         penalty = 20.0 if acc_score < req.min_acceptance_threshold else 0.0
         combined = w_prof * prof_score + w_acc * acc_score - penalty
         if combined > best_combined:

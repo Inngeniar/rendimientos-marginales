@@ -176,6 +176,67 @@ export function TheoryAndSources() {
         ))}
       </div>
 
+      {/* Manual de Usuario y Metodología de Monetización */}
+      <div className="rounded-2xl border border-indigo-200/80 bg-white p-6 shadow-sm">
+        <div className="mb-4">
+          <h3 className="text-base font-semibold text-slate-900">
+            Manual de Usuario: Metodología de Rangos y Modelos de Monetización
+          </h3>
+          <p className="text-xs text-slate-500">
+            Fórmulas transparentes de ingreso, margen bruto y aceptación dinámica de mercado
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-4 text-xs leading-relaxed text-slate-700">
+            <h4 className="mb-2 font-bold text-slate-900">1. Cálculo del Ingreso Mensual por Modelo</h4>
+            <p className="mb-2">
+              Sea <code>C_op</code> el costo operativo del mix óptimo (Humanos + Bots), <code>Q_eff</code> la demanda
+              efectiva (incluyendo retrabajo) y <code>m</code> el margen objetivo (ej. 30%). El ingreso base objetivo
+              es <code>I_base = C_op / (1 - m)</code>:
+            </p>
+            <ul className="list-disc space-y-1 pl-4">
+              <li>
+                <strong>Tarifa Fija por Factura:</strong> <code>I = I_base</code> (precio unitario exacto para lograr el
+                margen <code>m</code>).
+              </li>
+              <li>
+                <strong>Suscripción por Rango (Paquete):</strong> <code>I = I_base × 1.05</code> (prima del +5% por
+                garantizar presupuesto plano dentro del rango).
+              </li>
+              <li>
+                <strong>Híbrido (Base Fija + Variable):</strong> <code>I = 0.75 × C_op + 0.52 × I_base</code> (cubre
+                costos fijos/RPA + tarifa variable escalonada).
+              </li>
+              <li>
+                <strong>% sobre Valor Facturado / Recaudo:</strong>{" "}
+                <code>I = Q_eff × Valor_Factura × %Comisión</code>.
+              </li>
+            </ul>
+          </div>
+
+          <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-4 text-xs leading-relaxed text-slate-700">
+            <h4 className="mb-2 font-bold text-slate-900">2. Margen Bruto, Aceptación Dinámica y Decisión</h4>
+            <ul className="list-disc space-y-1.5 pl-4">
+              <li>
+                <strong>Margen Bruto (%):</strong> <code>(Ingreso - C_op) / Ingreso × 100</code>.
+              </li>
+              <li>
+                <strong>Aceptación Dinámica (0–100):</strong> Parte de la aceptación base según complejidad (ej. 90 en
+                Híbrido, 88/74 en Tarifa Fija, 92/70 en % Recaudo) y <strong>penaliza automáticamente</strong> si el
+                cobro unitario excede <code>2.5×</code> el precio objetivo o supera el <code>5%</code> del valor
+                promedio de la factura.
+              </li>
+              <li>
+                <strong>Selección del Óptimo:</strong> Combina <code>Rentabilidad</code> y <code>Aceptación</code>{" "}
+                según tu deslizador de prioridad, aplicando penalización comercial (-20 pts) a modelos por debajo de la{" "}
+                <em>aceptación mínima exigida</em>.
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
       {/* Fuentes consultadas */}
       <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm">
         <div className="mb-4 flex items-center gap-2.5">
