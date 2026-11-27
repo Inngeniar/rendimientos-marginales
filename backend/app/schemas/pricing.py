@@ -10,6 +10,18 @@ class PricingSimulationRequest(BaseModel):
     target_margin_pct: float = Field(ge=0.05, le=0.80, default=0.30)
     avg_invoice_value: float = Field(gt=0, default=350_000.0, description="Valor promedio facturado por cuenta ($)")
     success_fee_pct: float = Field(ge=0.002, le=0.25, default=0.025, description="% sobre valor facturado/recuperado")
+    profitability_weight: float = Field(
+        ge=0.0,
+        le=1.0,
+        default=0.50,
+        description="Peso de la rentabilidad frente a la aceptación de mercado (0 a 1)",
+    )
+    min_acceptance_threshold: int = Field(
+        ge=0,
+        le=100,
+        default=75,
+        description="Umbral mínimo de aceptación; modelos por debajo reciben penalización comercial",
+    )
     volume_tiers: list[int] | None = Field(
         default=None,
         description="Lista opcional de volúmenes mensuales a evaluar",

@@ -14,11 +14,22 @@ export function PricingSimulatorView({ processCfg, humanProfile, botProfile, onR
   const [targetMargin, setTargetMargin] = useState(0.3);
   const [avgInvoiceValue, setAvgInvoiceValue] = useState(350_000);
   const [successFeePct, setSuccessFeePct] = useState(0.025);
+  const [profitabilityWeight, setProfitabilityWeight] = useState(0.5);
+  const [minAcceptance, setMinAcceptance] = useState(75);
   const [result, setResult] = useState<PricingSimulationResult | null>(null);
 
   useEffect(() => {
     let active = true;
-    simulatePricing(processCfg, humanProfile, botProfile, targetMargin, avgInvoiceValue, successFeePct)
+    simulatePricing(
+      processCfg,
+      humanProfile,
+      botProfile,
+      targetMargin,
+      avgInvoiceValue,
+      successFeePct,
+      profitabilityWeight,
+      minAcceptance
+    )
       .then((res) => {
         if (active) {
           setResult(res);
@@ -31,7 +42,16 @@ export function PricingSimulatorView({ processCfg, humanProfile, botProfile, onR
     return () => {
       active = false;
     };
-  }, [processCfg, humanProfile, botProfile, targetMargin, avgInvoiceValue, successFeePct]);
+  }, [
+    processCfg,
+    humanProfile,
+    botProfile,
+    targetMargin,
+    avgInvoiceValue,
+    successFeePct,
+    profitabilityWeight,
+    minAcceptance,
+  ]);
 
   return (
     <div className="space-y-6">
@@ -83,6 +103,34 @@ export function PricingSimulatorView({ processCfg, humanProfile, botProfile, onR
               value={Number((successFeePct * 100).toFixed(1))}
               onChange={(e) => setSuccessFeePct(Math.min(0.25, Math.max(0.002, Number(e.target.value) / 100)))}
               className="mt-1 rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2 text-sm tabular-nums"
+            />
+          </label>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 gap-4 border-t border-slate-100 pt-4 sm:grid-cols-2">
+          <label className="flex flex-col text-xs font-medium text-slate-600">
+            Prioridad de decisión: {Math.round(profitabilityWeight * 100)}% Rentabilidad /{" "}
+            {Math.round((1 - profitabilityWeight) * 100)}% Aceptación
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={profitabilityWeight}
+              onChange={(e) => setProfitabilityWeight(Number(e.target.value))}
+              className="mt-2 accent-indigo-600"
+            />
+          </label>
+          <label className="flex flex-col text-xs font-medium text-slate-600">
+            Aceptación mínima exigida ({minAcceptance}/100)
+            <input
+              type="range"
+              min={50}
+              max={90}
+              step={5}
+              value={minAcceptance}
+              onChange={(e) => setMinAcceptance(Number(e.target.value))}
+              className="mt-2 accent-indigo-600"
             />
           </label>
         </div>

@@ -102,7 +102,9 @@ export async function simulatePricing(
   bot_profile: ResourceProfile,
   target_margin_pct = 0.3,
   avg_invoice_value = 350_000,
-  success_fee_pct = 0.025
+  success_fee_pct = 0.025,
+  profitability_weight = 0.5,
+  min_acceptance_threshold = 75
 ): Promise<PricingSimulationResult> {
   const { data } = await api.post<PricingSimulationResult>("/simulate/pricing", {
     process,
@@ -111,6 +113,8 @@ export async function simulatePricing(
     target_margin_pct,
     avg_invoice_value,
     success_fee_pct,
+    profitability_weight,
+    min_acceptance_threshold,
   });
   return data;
 }

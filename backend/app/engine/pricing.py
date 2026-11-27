@@ -155,13 +155,17 @@ def simulate_pricing_and_tiers(req: PricingSimulationRequest) -> PricingSimulati
     best_id = ""
     best_combined = -1.0
 
+    w_prof = req.profitability_weight
+    w_acc = 1.0 - w_prof
+
     for opt in raw_options:
         rev = float(opt["rev"])
         margin_amt = rev - base_cost
         margin_pct = (margin_amt / rev) if rev > 0 else 0.0
         prof_score = max(10, min(100, int(round(margin_pct * 200))))
         acc_score = int(opt["acceptance"])
-        combined = 0.55 * prof_score + 0.45 * acc_score
+        penalty = 20.0 if acc_score < req.min_acceptance_threshold else 0.0
+        combined = w_prof * prof_score + w_acc * acc_score - penalty
         if combined > best_combined:
             best_combined = combined
             best_id = str(opt["model_id"])
