@@ -38,6 +38,17 @@ export function isSupabaseConfigured(): boolean {
   return Boolean(cfg.url && cfg.anonKey);
 }
 
+function buildSupabaseHeaders(anonKey: string, extra?: Record<string, string>): Record<string, string> {
+  const headers: Record<string, string> = {
+    apikey: anonKey,
+    ...extra,
+  };
+  if (!anonKey.startsWith("sb_publishable_")) {
+    headers.Authorization = `Bearer ${anonKey}`;
+  }
+  return headers;
+}
+
 function loadLocalExercises(): SavedExerciseRecord[] {
   try {
     const raw = localStorage.getItem(LOCAL_EXERCISES_KEY);
@@ -55,10 +66,7 @@ export async function listExercises(): Promise<SavedExerciseRecord[]> {
   const cfg = getSupabaseConfig();
   if (cfg.url && cfg.anonKey) {
     const res = await fetch(`${cfg.url}/rest/v1/saved_exercises?select=*&order=created_at.desc`, {
-      headers: {
-        apikey: cfg.anonKey,
-        Authorization: `Bearer ${cfg.anonKey}`,
-      },
+      headers: buildSupabaseHeaders(cfg.anonKey),
     });
     if (!res.ok) {
       throw new Error(`Error consultando Supabase (${res.status})`);
@@ -83,12 +91,10 @@ export async function saveExercise(snapshot: ExerciseSnapshot): Promise<SavedExe
   if (cfg.url && cfg.anonKey) {
     const res = await fetch(`${cfg.url}/rest/v1/saved_exercises`, {
       method: "POST",
-      headers: {
-        apikey: cfg.anonKey,
-        Authorization: `Bearer ${cfg.anonKey}`,
+      headers: buildSupabaseHeaders(cfg.anonKey, {
         "Content-Type": "application/json",
         Prefer: "return=representation",
-      },
+      }),
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
@@ -115,10 +121,7 @@ export async function deleteExercise(id: string, source: "supabase" | "local"): 
     if (cfg.url && cfg.anonKey) {
       const res = await fetch(`${cfg.url}/rest/v1/saved_exercises?id=eq.${encodeURIComponent(id)}`, {
         method: "DELETE",
-        headers: {
-          apikey: cfg.anonKey,
-          Authorization: `Bearer ${cfg.anonKey}`,
-        },
+        headers: buildSupabaseHeaders(cfg.anonKey),
       });
       if (!res.ok) {
         throw new Error(`Error eliminando en Supabase (${res.status})`);
