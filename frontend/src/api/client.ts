@@ -4,6 +4,7 @@ import type {
   MarginalResult,
   MixOptimizeResult,
   PipelineResult,
+  PricingSimulationResult,
   ProcessConfig,
   ResourceProfile,
   SectorBenchmark,
@@ -91,6 +92,25 @@ export async function importExcel(file: File): Promise<ProcessConfig[]> {
 export async function exportExcel(rows: BaselineResult[]): Promise<Blob> {
   const { data } = await api.post("/excel/export", rows, {
     responseType: "blob",
+  });
+  return data;
+}
+
+export async function simulatePricing(
+  process: ProcessConfig,
+  human_profile: ResourceProfile,
+  bot_profile: ResourceProfile,
+  target_margin_pct = 0.3,
+  avg_invoice_value = 350_000,
+  success_fee_pct = 0.025
+): Promise<PricingSimulationResult> {
+  const { data } = await api.post<PricingSimulationResult>("/simulate/pricing", {
+    process,
+    human_profile,
+    bot_profile,
+    target_margin_pct,
+    avg_invoice_value,
+    success_fee_pct,
   });
   return data;
 }

@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.routes import benchmarks, excel, scenarios, simulation
+from app.api.routes import benchmarks, excel, pricing, scenarios, simulation
 from app.config import settings
 from app.db.database import init_db
 
@@ -23,6 +23,7 @@ app.add_middleware(
 )
 
 app.include_router(simulation.router, prefix=settings.api_prefix)
+app.include_router(pricing.router, prefix=settings.api_prefix)
 app.include_router(benchmarks.router, prefix=settings.api_prefix)
 app.include_router(scenarios.router, prefix=settings.api_prefix)
 app.include_router(excel.router, prefix=settings.api_prefix)

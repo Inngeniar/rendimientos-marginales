@@ -115,3 +115,68 @@ export interface SectorBenchmark {
   target_clean_claim_rate: number;
   notes: string;
 }
+
+export interface VolumeTierResult {
+  tier_label: string;
+  min_volume: number;
+  max_volume: number;
+  optimal_humans: number;
+  optimal_bots: number;
+  solo_humans_needed: number;
+  monthly_operational_cost: number;
+  unit_cost_per_invoice: number;
+  recommended_unit_price: number;
+  recommended_monthly_price: number;
+  resource_jump_note: string;
+}
+
+export interface MonetizationOption {
+  model_id: string;
+  model_name: string;
+  estimated_monthly_revenue: number;
+  estimated_monthly_cost: number;
+  gross_margin_amount: number;
+  gross_margin_pct: number;
+  market_acceptance_score: number;
+  profitability_score: number;
+  pros: string;
+  cons: string;
+  is_recommended: boolean;
+}
+
+export interface PricingSimulationResult {
+  process_name: string;
+  complexity: string;
+  tiers: VolumeTierResult[];
+  monetization_options: MonetizationOption[];
+  recommended_monetization: string;
+  executive_summary: string;
+}
+
+export interface ExerciseSnapshot {
+  version: string;
+  savedAt: string;
+  name: string;
+  notes: string;
+  processCfg: ProcessConfig;
+  humanProfile: ResourceProfile;
+  botProfile: ResourceProfile;
+  congestionAlpha: number;
+  summaryResult?: {
+    baseline: BaselineResult | null;
+    mixResult: MixOptimizeResult | null;
+    pricingResult?: PricingSimulationResult | null;
+  };
+}
+
+export interface SavedExerciseRecord {
+  id: string;
+  name: string;
+  category: string;
+  complexity: string;
+  notes: string;
+  model_payload: ExerciseSnapshot;
+  summary_result: Record<string, unknown>;
+  created_at: string;
+  source: "supabase" | "local";
+}

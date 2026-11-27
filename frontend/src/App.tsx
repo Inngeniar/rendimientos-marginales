@@ -4,8 +4,11 @@ import {
   BookOpen,
   Bot,
   Clock,
+  Database,
+  DollarSign,
   Download,
   FileSpreadsheet,
+  FileText,
   Layers,
   Sparkles,
   TrendingUp,
@@ -23,12 +26,15 @@ import {
   simulatePipeline,
 } from "./api/client";
 import { BenchmarkBadge } from "./components/BenchmarkBadge";
+import { ExecutiveReportView } from "./components/ExecutiveReportView";
 import { MarginalAnalyst } from "./components/MarginalAnalyst";
 import { MarginalChart } from "./components/MarginalChart";
 import { OitInefficiencyEstimator } from "./components/OitInefficiencyEstimator";
 import { PipelineView, type EditablePipelineStage } from "./components/PipelineView";
+import { PricingSimulatorView } from "./components/PricingSimulatorView";
 import { ProcessForm } from "./components/ProcessForm";
 import { ResourceMixPanel } from "./components/ResourceMixPanel";
+import { SavedExercisesPanel } from "./components/SavedExercisesPanel";
 import { ScenarioLibrary, loadAutosave, saveAutosave } from "./components/ScenarioLibrary";
 import { TheoryAndSources } from "./components/TheoryAndSources";
 import type {
@@ -36,6 +42,7 @@ import type {
   MarginalResult,
   MixOptimizeResult,
   PipelineResult,
+  PricingSimulationResult,
   ProcessConfig,
   ResourceProfile,
   SectorBenchmark,
@@ -92,7 +99,7 @@ const DEFAULT_PIPELINE_STAGES: EditablePipelineStage[] = [
 
 export function App() {
   const [initial] = useState(() => loadAutosave());
-  const [tab, setTab] = useState<"simulator" | "optimizer" | "pipeline" | "theory">("simulator");
+  const [tab, setTab] = useState<"simulator" | "optimizer" | "pipeline" | "pricing" | "report" | "saved" | "theory">("simulator");
   const [processCfg, setProcessCfg] = useState<ProcessConfig>(() => initial?.processCfg ?? DEFAULT_PROCESS);
   const [humanProfile, setHumanProfile] = useState<ResourceProfile>(() => initial?.humanProfile ?? DEFAULT_HUMAN);
   const [botProfile, setBotProfile] = useState<ResourceProfile>(() => initial?.botProfile ?? DEFAULT_BOT);
@@ -110,6 +117,7 @@ export function App() {
   const [marginal, setMarginal] = useState<MarginalResult | null>(null);
   const [mixResult, setMixResult] = useState<MixOptimizeResult | null>(null);
   const [pipelineResult, setPipelineResult] = useState<PipelineResult | null>(null);
+  const [pricingResult, setPricingResult] = useState<PricingSimulationResult | null>(null);
   const [benchmarks, setBenchmarks] = useState<SectorBenchmark[]>([]);
   const [importedProcesses, setImportedProcesses] = useState<ProcessConfig[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -304,6 +312,39 @@ export function App() {
               }`}
             >
               <Layers className="h-4 w-4" /> Flujo Integral y Estándares
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("pricing")}
+              className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-semibold transition ${
+                tab === "pricing"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-200 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              <DollarSign className="h-4 w-4" /> Rangos y Monetización
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("report")}
+              className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-semibold transition ${
+                tab === "report"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-200 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              <FileText className="h-4 w-4" /> Informe Ejecutivo
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("saved")}
+              className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-semibold transition ${
+                tab === "saved"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-200 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              <Database className="h-4 w-4" /> Mis Ejercicios
             </button>
             <button
               type="button"
@@ -644,6 +685,50 @@ export function App() {
               </div>
             </div>
           </div>
+        )}
+
+        {tab === "pricing" && (
+          <PricingSimulatorView
+            processCfg={processCfg}
+            humanProfile={humanProfile}
+            botProfile={botProfile}
+            onResultChange={setPricingResult}
+          />
+        )}
+
+        {tab === "report" && (
+          <ExecutiveReportView
+            processCfg={processCfg}
+            humanProfile={humanProfile}
+            botProfile={botProfile}
+            baseline={baseline}
+            marginal={marginal}
+            mixResult={mixResult}
+            pricingResult={pricingResult}
+          />
+        )}
+
+        {tab === "saved" && (
+          <SavedExercisesPanel
+            currentSnapshot={{
+              version: "1.0",
+              savedAt: new Date().toISOString(),
+              name: processCfg.name,
+              notes: "",
+              processCfg,
+              humanProfile,
+              botProfile,
+              congestionAlpha,
+              summaryResult: { baseline, mixResult, pricingResult },
+            }}
+            onLoadSnapshot={(snap) => {
+              setProcessCfg(snap.processCfg);
+              setHumanProfile(snap.humanProfile);
+              setBotProfile(snap.botProfile);
+              setCongestionAlpha(snap.congestionAlpha ?? 0.03);
+              setTab("simulator");
+            }}
+          />
         )}
 
         {tab === "theory" && <TheoryAndSources />}
