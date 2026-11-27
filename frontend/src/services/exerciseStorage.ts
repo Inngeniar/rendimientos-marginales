@@ -8,17 +8,24 @@ export interface SupabaseConfig {
   anonKey: string;
 }
 
+function normalizeSupabaseUrl(raw: string): string {
+  return raw
+    .trim()
+    .replace(/\/+$/, "")
+    .replace(/\/rest\/v1$/i, "");
+}
+
 export function getSupabaseConfig(): SupabaseConfig {
   const envUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
   const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
   if (envUrl && envKey) {
-    return { url: envUrl.replace(/\/+$/, ""), anonKey: envKey };
+    return { url: normalizeSupabaseUrl(envUrl), anonKey: envKey };
   }
   try {
     const raw = localStorage.getItem(SUPABASE_CFG_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as SupabaseConfig;
-      return { url: (parsed.url || "").replace(/\/+$/, ""), anonKey: parsed.anonKey || "" };
+      return { url: normalizeSupabaseUrl(parsed.url || ""), anonKey: parsed.anonKey || "" };
     }
   } catch {
     // ignore
@@ -29,7 +36,7 @@ export function getSupabaseConfig(): SupabaseConfig {
 export function saveSupabaseConfig(cfg: SupabaseConfig): void {
   localStorage.setItem(
     SUPABASE_CFG_KEY,
-    JSON.stringify({ url: cfg.url.trim().replace(/\/+$/, ""), anonKey: cfg.anonKey.trim() })
+    JSON.stringify({ url: normalizeSupabaseUrl(cfg.url), anonKey: cfg.anonKey.trim() })
   );
 }
 
